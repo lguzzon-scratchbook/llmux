@@ -19,6 +19,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun build --target=node src/index.ts --outdir=dist",
+    "build:binary": "bun run scripts/build.ts",
     "start": "bun dist/index.js",
     "lint": "bun oxlint src/",
     "lint:fix": "bun oxlint src/ --fix",

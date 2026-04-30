@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS Intel (x64)
+          - os: macos-13
+            target: bun-darwin-x64
+            platform_suffix: darwin-x64
+          # macOS Apple Silicon (ARM64)
+          - os: macos-14
+            target: bun-darwin-arm64
+            platform_suffix: darwin-arm64
+          # Linux x64
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            platform_suffix: linux-x64
+          # Linux ARM64 (using QEMU for cross-compilation)
+          - os: ubuntu-latest
+            target: bun-linux-arm64
+            platform_suffix: linux-arm64
+            use_qemu: true
+          # Windows x64
+          - os: windows-latest
+            target: bun-windows-x64
+            platform_suffix: windows-x64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup QEMU (for ARM64 cross-compilation)
+        if: matrix.use_qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build binary
+        shell: bash
+        run: |
+          bun run scripts/build.ts --target ${{ matrix.target }} --verbose
+
+      - name: Rename binary (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.version }}"
+          $suffix = "${{ matrix.platform_suffix }}"
+          Rename-Item -Path "dist/llmux-v$version-$suffix.exe" -NewName "llmux-v$version-$suffix.exe"
+
+      - name: Rename binary (Unix)
+        if: '!startsWith(matrix.os, ''windows'')'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          SUFFIX="${{ matrix.platform_suffix }}"
+          mv "dist/llmux-v${VERSION}-${SUFFIX}" "dist/llmux-v${VERSION}-${SUFFIX}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llmux-${{ matrix.platform_suffix }}
+          path: dist/llmux-*
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: |
+          ls -la artifacts/
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: llmux v${{ steps.get_version.outputs.version }}
+          draft: true
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          files: artifacts/llmux-*
+          generate_release_notes: true
