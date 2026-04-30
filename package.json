@@ -17,7 +17,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "_:chk":"bun format && bun lint:fix && bun typecheck",
+    "_:chk": "bun format && bun lint:fix && bun typecheck",
     "dev": "bun run --watch src/index.ts",
     "build": "bun build --target=node src/index.ts --outdir=dist",
     "build:binary": "bun run scripts/build.ts",
