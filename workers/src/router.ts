@@ -90,6 +90,7 @@ export async function routeChatCompletion(
     }
 
     try {
+      // oxlint-disable-next-line no-await-in-loop -- Sequential fallback required
       const response = await callProvider(provider, {
         ...request,
         model: resolvedModel,
@@ -130,6 +131,7 @@ export async function routeChatCompletionStream(
     }
 
     try {
+      // oxlint-disable-next-line no-await-in-loop -- Sequential fallback required
       return await streamProvider(provider, {
         ...request,
         model: resolvedModel,
