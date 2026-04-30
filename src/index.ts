@@ -12,8 +12,8 @@ import { responsesRoutes } from "./routes/responses.js";
 import { healthRoutes } from "./routes/health.js";
 
 async function main(): Promise<void> {
-  // Load configuration
-  const config = loadConfig();
+  // Load configuration from env var or default paths
+  const config = loadConfig(process.env.LLMUX_CONFIG_PATH);
 
   // Initialize logger
   const logger = createLogger(config.logging);
