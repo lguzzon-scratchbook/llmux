@@ -1,0 +1,22 @@
+{
+  "$schema": "../node_modules/oxc-transform/configuration_schema.json",
+  "format": {
+    "quoteStyle": "double",
+    "trailingComma": "all",
+    "semicolons": "always",
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "jsxQuoteStyle": "double",
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false
+  },
+  "ignorePatterns": [
+    "dist/**/*",
+    "node_modules/**/*",
+    "**/*.min.*"
+  ]
+}

@@ -7,6 +7,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "lint": "bunx oxlint src/",
+    "lint:fix": "bunx oxlint src/ --fix",
+    "format": "bunx oxfmt src/",
+    "format:check": "bunx oxfmt src/ --check",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -14,6 +18,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20241127.0",
+    "oxc-transform": "^0.41.0",
     "typescript": "5.7.2",
     "wrangler": "3.93.0"
   }
