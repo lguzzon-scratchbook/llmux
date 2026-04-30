@@ -5,6 +5,7 @@ This document describes how to create releases for llmux, including both local d
 ## Overview
 
 llmux uses a hybrid build approach:
+
 - **Local builds**: Fast iteration during development (current platform only)
 - **CI releases**: Automated multi-platform builds via GitHub Actions
 
@@ -17,6 +18,7 @@ bun run build:binary
 ```
 
 This produces a single-file executable in `dist/`:
+
 - macOS ARM64: `dist/llmux-v0.1.0-darwin-arm64`
 - macOS Intel: `dist/llmux-v0.1.0-darwin-x64`
 - Linux x64: `dist/llmux-v0.1.0-linux-x64`
@@ -40,13 +42,13 @@ bun run scripts/build.ts --verbose
 
 ### Supported Targets
 
-| Target | Platform | Architecture |
-|--------|----------|--------------|
-| `bun-darwin-arm64` | macOS | Apple Silicon (M1/M2/M3) |
-| `bun-darwin-x64` | macOS | Intel |
-| `bun-linux-x64` | Linux | x86-64 |
-| `bun-linux-arm64` | Linux | ARM64 |
-| `bun-windows-x64` | Windows | x86-64 |
+| Target             | Platform | Architecture             |
+| ------------------ | -------- | ------------------------ |
+| `bun-darwin-arm64` | macOS    | Apple Silicon (M1/M2/M3) |
+| `bun-darwin-x64`   | macOS    | Intel                    |
+| `bun-linux-x64`    | Linux    | x86-64                   |
+| `bun-linux-arm64`  | Linux    | ARM64                    |
+| `bun-windows-x64`  | Windows  | x86-64                   |
 
 ## CI/CD Releases
 
@@ -59,6 +61,7 @@ Official releases are built automatically via GitHub Actions when you push a ver
 2. **Update version in `package.json`** (if not already updated)
 
 3. **Create and push a version tag**:
+
    ```bash
    git tag v0.2.0
    git push origin v0.2.0
@@ -84,14 +87,14 @@ Pre-release tags (containing `-rc`, `-beta`, or `-alpha`) are automatically mark
 
 ### Platform Support Matrix
 
-| OS | Architecture | Status | Notes |
-|----|--------------|--------|-------|
-| macOS | ARM64 (Apple Silicon) | ✅ Supported | Native builds on macOS 14 runners |
-| macOS | x64 (Intel) | ✅ Supported | Native builds on macOS 13 runners |
-| Linux | x64 | ✅ Supported | Native builds on Ubuntu runners |
-| Linux | ARM64 | ✅ Supported | Cross-compiled with QEMU |
-| Windows | x64 | ✅ Supported | Native builds on Windows runners |
-| Windows | ARM64 | ⚠️ Planned | Not yet implemented |
+| OS      | Architecture          | Status       | Notes                             |
+| ------- | --------------------- | ------------ | --------------------------------- |
+| macOS   | ARM64 (Apple Silicon) | ✅ Supported | Native builds on macOS 14 runners |
+| macOS   | x64 (Intel)           | ✅ Supported | Native builds on macOS 13 runners |
+| Linux   | x64                   | ✅ Supported | Native builds on Ubuntu runners   |
+| Linux   | ARM64                 | ✅ Supported | Cross-compiled with QEMU          |
+| Windows | x64                   | ✅ Supported | Native builds on Windows runners  |
+| Windows | ARM64                 | ⚠️ Planned   | Not yet implemented               |
 
 ## Artifact Naming Convention
 
@@ -102,6 +105,7 @@ llmux-v{VERSION}-{PLATFORM}-{ARCH}
 ```
 
 Examples:
+
 - `llmux-v0.2.0-darwin-arm64` (macOS Apple Silicon)
 - `llmux-v0.2.0-linux-x64` (Linux x86-64)
 - `llmux-v0.2.0-windows-x64.exe` (Windows x86-64)
@@ -134,10 +138,12 @@ strings llmux-v0.2.0-darwin-arm64 | grep "0.2.0"
 ### Build Failures
 
 **Error: "Invalid target"**
+
 - Check the target name matches one of the supported targets exactly
 - Use `bun run scripts/build.ts --help` to see valid targets
 
 **Error: "Build failed with exit code 1"**
+
 - Ensure Bun is installed and on PATH: `bun --version`
 - Check that source files compile: `bun run typecheck`
 - Verify no syntax errors in `src/index.ts`
@@ -145,21 +151,25 @@ strings llmux-v0.2.0-darwin-arm64 | grep "0.2.0"
 ### CI Failures
 
 **Workflow doesn't trigger**
+
 - Ensure tag format is `v*` (e.g., `v0.2.0`)
 - Check tag was pushed to GitHub: `git ls-remote --tags origin`
 - Verify `.github/workflows/release.yml` exists on the tagged commit
 
 **ARM64 build fails**
+
 - Linux ARM64 uses QEMU emulation which can be slow
 - If timeouts occur, increase runner timeout or split into separate job
 
 ### Binary Issues
 
 **Binary runs but can't find config**
+
 - This is expected behavior - llmux requires a config file
 - Create `config/config.yaml` from the example
 
 **Binary size is large**
+
 - Bun compile produces ~60-70 MB binaries (includes Bun runtime)
 - This is normal and expected for single-file executables
 
@@ -172,6 +182,7 @@ If a release has issues:
    - Click "Delete" on the problematic release
 
 2. **Delete the git tag**:
+
    ```bash
    git push --delete origin v0.2.0
    git tag -d v0.2.0
