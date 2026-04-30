@@ -4,14 +4,18 @@
   "private": true,
   "description": "llmux - Cloudflare Workers edition",
   "type": "module",
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "packageManager": "bun@1.2.0",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "lint": "bunx oxlint src/",
-    "lint:fix": "bunx oxlint src/ --fix",
-    "format": "bunx oxfmt src/",
-    "format:check": "bunx oxfmt src/ --check",
-    "typecheck": "tsc --noEmit"
+    "lint": "bun oxlint src/",
+    "lint:fix": "bun oxlint src/ --fix",
+    "format": "bun oxfmt src/",
+    "format:check": "bun oxfmt src/ --check",
+    "typecheck": "bun tsc --noEmit"
   },
   "dependencies": {
     "hono": "^4.6.0"
