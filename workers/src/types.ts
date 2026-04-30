@@ -32,7 +32,7 @@ export interface ProviderConfig {
 
 // OpenAI-compatible types
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string | null;
   name?: string;
 }
@@ -55,7 +55,7 @@ export interface ChatCompletionRequest {
 export interface ChatCompletionChoice {
   index: number;
   message: ChatMessage;
-  finish_reason: 'stop' | 'length' | 'tool_calls' | null;
+  finish_reason: "stop" | "length" | "tool_calls" | null;
 }
 
 export interface Usage {
@@ -66,7 +66,7 @@ export interface Usage {
 
 export interface ChatCompletionResponse {
   id: string;
-  object: 'chat.completion';
+  object: "chat.completion";
   created: number;
   model: string;
   choices: ChatCompletionChoice[];
@@ -78,12 +78,12 @@ export interface ChatCompletionResponse {
 export interface StreamChoice {
   index: number;
   delta: Partial<ChatMessage>;
-  finish_reason: 'stop' | 'length' | 'tool_calls' | null;
+  finish_reason: "stop" | "length" | "tool_calls" | null;
 }
 
 export interface ChatCompletionChunk {
   id: string;
-  object: 'chat.completion.chunk';
+  object: "chat.completion.chunk";
   created: number;
   model: string;
   choices: StreamChoice[];

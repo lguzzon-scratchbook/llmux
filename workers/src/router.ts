@@ -1,7 +1,18 @@
-import type { Env, ProviderConfig, ChatCompletionRequest, ChatCompletionResponse } from './types.js';
-import { getEnabledProviders, resolveModelAlias, providerSupportsModel, callProvider, streamProvider } from './providers.js';
+import type {
+  Env,
+  ProviderConfig,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+} from "./types.js";
+import {
+  getEnabledProviders,
+  resolveModelAlias,
+  providerSupportsModel,
+  callProvider,
+  streamProvider,
+} from "./providers.js";
 
-type Strategy = 'round-robin' | 'random' | 'first-available';
+type Strategy = "round-robin" | "random" | "first-available";
 
 // Simple in-memory round-robin state (resets per worker instance)
 const roundRobinIndex = new Map<string, number>();
@@ -9,36 +20,37 @@ const roundRobinIndex = new Map<string, number>();
 function getProviderOrder(
   providers: ProviderConfig[],
   request: ChatCompletionRequest,
-  env: Env
+  env: Env,
 ): ProviderConfig[] {
   // If specific provider requested
   if (request.provider) {
-    const provider = providers.find(p => p.name === request.provider);
+    const provider = providers.find((p) => p.name === request.provider);
     return provider ? [provider] : [];
   }
 
   // Get fallback chain from env or use all providers
-  const fallbackChain = env.FALLBACK_CHAIN?.split(',').map(s => s.trim()) || providers.map(p => p.name);
+  const fallbackChain =
+    env.FALLBACK_CHAIN?.split(",").map((s) => s.trim()) || providers.map((p) => p.name);
 
   // Filter to providers in fallback chain order
   const ordered = fallbackChain
-    .map(name => providers.find(p => p.name === name))
+    .map((name) => providers.find((p) => p.name === name))
     .filter((p): p is ProviderConfig => p !== undefined);
 
-  const strategy = (env.DEFAULT_STRATEGY || 'round-robin') as Strategy;
+  const strategy = (env.DEFAULT_STRATEGY || "round-robin") as Strategy;
 
   switch (strategy) {
-    case 'random':
+    case "random":
       return shuffleArray([...ordered]);
 
-    case 'round-robin': {
+    case "round-robin": {
       const key = request.model;
       const idx = roundRobinIndex.get(key) || 0;
       roundRobinIndex.set(key, (idx + 1) % ordered.length);
       return [...ordered.slice(idx), ...ordered.slice(0, idx)];
     }
 
-    case 'first-available':
+    case "first-available":
     default:
       return ordered;
   }
@@ -54,18 +66,18 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export async function routeChatCompletion(
   env: Env,
-  request: ChatCompletionRequest
+  request: ChatCompletionRequest,
 ): Promise<ChatCompletionResponse> {
   const providers = getEnabledProviders(env);
 
   if (providers.length === 0) {
-    throw new Error('No providers configured');
+    throw new Error("No providers configured");
   }
 
   const orderedProviders = getProviderOrder(providers, request, env);
 
   if (orderedProviders.length === 0) {
-    throw new Error('No providers available for this request');
+    throw new Error("No providers available for this request");
   }
 
   let lastError: Error | null = null;
@@ -89,23 +101,23 @@ export async function routeChatCompletion(
     }
   }
 
-  throw new Error(`All providers failed. Last error: ${lastError?.message || 'Unknown'}`);
+  throw new Error(`All providers failed. Last error: ${lastError?.message || "Unknown"}`);
 }
 
 export async function routeChatCompletionStream(
   env: Env,
-  request: ChatCompletionRequest
+  request: ChatCompletionRequest,
 ): Promise<Response> {
   const providers = getEnabledProviders(env);
 
   if (providers.length === 0) {
-    throw new Error('No providers configured');
+    throw new Error("No providers configured");
   }
 
   const orderedProviders = getProviderOrder(providers, request, env);
 
   if (orderedProviders.length === 0) {
-    throw new Error('No providers available for this request');
+    throw new Error("No providers available for this request");
   }
 
   let lastError: Error | null = null;
@@ -128,5 +140,7 @@ export async function routeChatCompletionStream(
     }
   }
 
-  throw new Error(`All providers failed for streaming. Last error: ${lastError?.message || 'Unknown'}`);
+  throw new Error(
+    `All providers failed for streaming. Last error: ${lastError?.message || "Unknown"}`,
+  );
 }

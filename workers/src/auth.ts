@@ -1,4 +1,4 @@
-import type { Env } from './types.js';
+import type { Env } from "./types.js";
 
 export interface AuthResult {
   valid: boolean;
@@ -14,7 +14,7 @@ function buildKeyMap(env: Env): Map<string, string> {
 
   // Single key (legacy)
   if (env.LLMUX_API_KEY) {
-    keyMap.set(env.LLMUX_API_KEY, 'default');
+    keyMap.set(env.LLMUX_API_KEY, "default");
   }
 
   // Multiple keys as JSON
@@ -27,7 +27,7 @@ function buildKeyMap(env: Env): Map<string, string> {
         }
       }
     } catch {
-      console.error('Failed to parse LLMUX_API_KEYS JSON');
+      console.error("Failed to parse LLMUX_API_KEYS JSON");
     }
   }
 
@@ -42,21 +42,19 @@ export function validateAuth(env: Env, authHeader: string | undefined): AuthResu
 
   // Skip auth if no keys configured
   if (keyMap.size === 0) {
-    return { valid: true, label: 'anonymous' };
+    return { valid: true, label: "anonymous" };
   }
 
   if (!authHeader) {
-    return { valid: false, error: 'Missing Authorization header' };
+    return { valid: false, error: "Missing Authorization header" };
   }
 
-  const providedKey = authHeader.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : authHeader;
+  const providedKey = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 
   const label = keyMap.get(providedKey);
 
   if (!label) {
-    return { valid: false, error: 'Invalid API key' };
+    return { valid: false, error: "Invalid API key" };
   }
 
   return { valid: true, label };

@@ -1,4 +1,4 @@
-import type { Env, ChatCompletionRequest, ChatCompletionResponse } from './types.js';
+import type { Env, ChatCompletionRequest, ChatCompletionResponse } from "./types.js";
 
 /**
  * Generate a cache key from request
@@ -21,7 +21,7 @@ export function generateCacheKey(request: ChatCompletionRequest): string {
   let hash = 0;
   for (let i = 0; i < json.length; i++) {
     const char = json.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return `llmux:${Math.abs(hash).toString(16)}:${json.length}`;
@@ -32,7 +32,7 @@ export function generateCacheKey(request: ChatCompletionRequest): string {
  */
 export async function getFromCache(
   env: Env,
-  request: ChatCompletionRequest
+  request: ChatCompletionRequest,
 ): Promise<ChatCompletionResponse | null> {
   if (!env.CACHE) return null;
   if (request.cache === false) return null;
@@ -40,7 +40,7 @@ export async function getFromCache(
   const key = generateCacheKey(request);
 
   try {
-    const cached = await env.CACHE.get(key, 'json');
+    const cached = await env.CACHE.get(key, "json");
     if (cached) {
       return { ...(cached as ChatCompletionResponse), cached: true };
     }
@@ -57,14 +57,14 @@ export async function getFromCache(
 export async function setInCache(
   env: Env,
   request: ChatCompletionRequest,
-  response: ChatCompletionResponse
+  response: ChatCompletionResponse,
 ): Promise<void> {
   if (!env.CACHE) return;
   if (request.cache === false) return;
   if (request.stream) return;
 
   const key = generateCacheKey(request);
-  const ttl = parseInt(env.CACHE_TTL || '3600', 10);
+  const ttl = parseInt(env.CACHE_TTL || "3600", 10);
 
   try {
     await env.CACHE.put(key, JSON.stringify(response), { expirationTtl: ttl });
