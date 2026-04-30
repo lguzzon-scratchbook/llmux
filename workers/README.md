@@ -8,7 +8,7 @@ Edge-deployed LLM proxy using Cloudflare Workers and Hono.
 
 ```bash
 cd workers
-npm install
+bun install
 ```
 
 ### 2. Create KV namespace for caching
@@ -46,10 +46,10 @@ wrangler secret put TOGETHER_API_KEY
 
 ```bash
 # Development
-npm run dev
+bun run dev
 
 # Production
-npm run deploy
+bun run deploy
 ```
 
 ## Usage
