@@ -1,12 +1,12 @@
-import { readFileSync, existsSync } from 'node:fs';
-import { parse } from 'yaml';
-import type { Config } from '../types.js';
+import { readFileSync, existsSync } from "node:fs";
+import { parse } from "yaml";
+import type { Config } from "../types.js";
 
 const CONFIG_PATHS = [
-  './config/config.yaml',
-  './config/config.yml',
-  './config.yaml',
-  './config.yml',
+  "./config/config.yaml",
+  "./config/config.yml",
+  "./config.yaml",
+  "./config.yml",
 ];
 
 /**
@@ -15,7 +15,7 @@ const CONFIG_PATHS = [
  */
 function interpolateEnvVars(value: string): string {
   return value.replace(/\$\{([^}]+)\}/g, (_, expr: string) => {
-    const [varName, defaultValue] = expr.split(':-');
+    const [varName, defaultValue] = expr.split(":-");
     const envValue = process.env[varName.trim()];
 
     if (envValue !== undefined) {
@@ -27,7 +27,7 @@ function interpolateEnvVars(value: string): string {
     }
 
     // Return empty string for undefined vars without defaults
-    return '';
+    return "";
   });
 }
 
@@ -35,15 +35,15 @@ function interpolateEnvVars(value: string): string {
  * Recursively interpolate environment variables in config object
  */
 function interpolateConfig<T>(obj: T): T {
-  if (typeof obj === 'string') {
+  if (typeof obj === "string") {
     return interpolateEnvVars(obj) as T;
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => interpolateConfig(item)) as T;
+    return obj.map((item) => interpolateConfig(item)) as T;
   }
 
-  if (obj !== null && typeof obj === 'object') {
+  if (obj !== null && typeof obj === "object") {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       result[key] = interpolateConfig(value);
@@ -72,12 +72,12 @@ export function loadConfig(configPath?: string): Config {
 
   if (!filePath || !existsSync(filePath)) {
     throw new Error(
-      `Configuration file not found. Searched: ${CONFIG_PATHS.join(', ')}. ` +
-      `Copy config/config.example.yaml to config/config.yaml and configure it.`
+      `Configuration file not found. Searched: ${CONFIG_PATHS.join(", ")}. ` +
+        `Copy config/config.example.yaml to config/config.yaml and configure it.`,
     );
   }
 
-  const content = readFileSync(filePath, 'utf-8');
+  const content = readFileSync(filePath, "utf-8");
   const rawConfig = parse(content);
 
   // Interpolate environment variables
@@ -94,19 +94,20 @@ export function loadConfig(configPath?: string): Config {
  */
 function validateConfig(config: Config): void {
   if (!config.server?.port) {
-    throw new Error('Configuration missing: server.port');
+    throw new Error("Configuration missing: server.port");
   }
 
   if (!config.providers || Object.keys(config.providers).length === 0) {
-    throw new Error('Configuration missing: at least one provider must be configured');
+    throw new Error("Configuration missing: at least one provider must be configured");
   }
 
   // Check that at least one provider is enabled and has an API key
-  const enabledProviders = Object.entries(config.providers)
-    .filter(([_, provider]) => provider.enabled && provider.api_key);
+  const enabledProviders = Object.entries(config.providers).filter(
+    ([_, provider]) => provider.enabled && provider.api_key,
+  );
 
   if (enabledProviders.length === 0) {
-    throw new Error('No providers are enabled with valid API keys');
+    throw new Error("No providers are enabled with valid API keys");
   }
 
   // Validate fallback chain references valid providers

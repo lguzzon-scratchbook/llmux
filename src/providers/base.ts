@@ -1,12 +1,12 @@
-import { request } from 'undici';
-import { getLogger } from '../utils/logger.js';
+import { request } from "undici";
+import { getLogger } from "../utils/logger.js";
 import type {
   Provider,
   ProviderConfig,
   ChatCompletionRequest,
   ChatCompletionResponse,
   ChatCompletionChunk,
-} from '../types.js';
+} from "../types.js";
 
 export class BaseProvider implements Provider {
   name: string;
@@ -25,7 +25,7 @@ export class BaseProvider implements Provider {
     try {
       // Simple health check - try to hit the models endpoint
       const response = await request(`${this.config.base_url}/models`, {
-        method: 'GET',
+        method: "GET",
         headers: this.getHeaders(),
         headersTimeout: 5000,
         bodyTimeout: 5000,
@@ -38,8 +38,8 @@ export class BaseProvider implements Provider {
 
   protected getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.config.api_key}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.config.api_key}`,
     };
 
     // Add any extra headers from config
@@ -57,10 +57,10 @@ export class BaseProvider implements Provider {
     // Remove llmux-specific fields before sending to provider
     const { provider: _, cache: __, ...providerRequest } = req;
 
-    logger.debug({ provider: this.name, model: req.model }, 'Sending chat completion request');
+    logger.debug({ provider: this.name, model: req.model }, "Sending chat completion request");
 
     const response = await request(url, {
-      method: 'POST',
+      method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...providerRequest, stream: false }),
       headersTimeout: this.config.timeout,
@@ -69,11 +69,14 @@ export class BaseProvider implements Provider {
 
     if (response.statusCode !== 200) {
       const errorBody = await response.body.text();
-      logger.error({ provider: this.name, status: response.statusCode, error: errorBody }, 'Provider error');
+      logger.error(
+        { provider: this.name, status: response.statusCode, error: errorBody },
+        "Provider error",
+      );
       throw new Error(`Provider ${this.name} returned ${response.statusCode}: ${errorBody}`);
     }
 
-    const data = await response.body.json() as ChatCompletionResponse;
+    const data = (await response.body.json()) as ChatCompletionResponse;
 
     // Add provider info to response
     return {
@@ -89,10 +92,13 @@ export class BaseProvider implements Provider {
     // Remove llmux-specific fields before sending to provider
     const { provider: _, cache: __, ...providerRequest } = req;
 
-    logger.debug({ provider: this.name, model: req.model }, 'Sending streaming chat completion request');
+    logger.debug(
+      { provider: this.name, model: req.model },
+      "Sending streaming chat completion request",
+    );
 
     const response = await request(url, {
-      method: 'POST',
+      method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...providerRequest, stream: true }),
       headersTimeout: this.config.timeout,
@@ -101,38 +107,41 @@ export class BaseProvider implements Provider {
 
     if (response.statusCode !== 200) {
       const errorBody = await response.body.text();
-      logger.error({ provider: this.name, status: response.statusCode, error: errorBody }, 'Provider stream error');
+      logger.error(
+        { provider: this.name, status: response.statusCode, error: errorBody },
+        "Provider stream error",
+      );
       throw new Error(`Provider ${this.name} returned ${response.statusCode}: ${errorBody}`);
     }
 
     // Parse SSE stream
-    let buffer = '';
+    let buffer = "";
 
     for await (const chunk of response.body) {
       buffer += chunk.toString();
-      const lines = buffer.split('\n');
+      const lines = buffer.split("\n");
 
       // Keep the last incomplete line in buffer
-      buffer = lines.pop() || '';
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
         const trimmed = line.trim();
 
-        if (!trimmed || trimmed.startsWith(':')) {
+        if (!trimmed || trimmed.startsWith(":")) {
           continue;
         }
 
-        if (trimmed === 'data: [DONE]') {
+        if (trimmed === "data: [DONE]") {
           return;
         }
 
-        if (trimmed.startsWith('data: ')) {
+        if (trimmed.startsWith("data: ")) {
           const jsonStr = trimmed.slice(6);
           try {
             const parsed = JSON.parse(jsonStr) as ChatCompletionChunk;
             yield parsed;
           } catch (e) {
-            logger.warn({ line: trimmed }, 'Failed to parse SSE chunk');
+            logger.warn({ line: trimmed }, "Failed to parse SSE chunk");
           }
         }
       }

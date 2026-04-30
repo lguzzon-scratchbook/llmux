@@ -1,35 +1,33 @@
-import { createHash } from 'node:crypto';
-import { MemoryCache } from './memory.js';
-import { RedisCache } from './redis.js';
-import type { Cache, CacheConfig, ChatCompletionRequest, ChatCompletionResponse } from '../types.js';
-import { getLogger } from '../utils/logger.js';
+import { createHash } from "node:crypto";
+import { MemoryCache } from "./memory.js";
+import { RedisCache } from "./redis.js";
+import type {
+  Cache,
+  CacheConfig,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+} from "../types.js";
+import { getLogger } from "../utils/logger.js";
 
-export { MemoryCache } from './memory.js';
-export { RedisCache } from './redis.js';
+export { MemoryCache } from "./memory.js";
+export { RedisCache } from "./redis.js";
 
 /**
  * Create a cache instance based on configuration
  */
 export function createCache(config: CacheConfig): Cache | null {
   if (!config.enabled) {
-    getLogger().info('Caching disabled');
+    getLogger().info("Caching disabled");
     return null;
   }
 
   switch (config.backend) {
-    case 'redis':
-      return new RedisCache(
-        config.redis.url,
-        config.redis.ttl,
-        config.redis.key_prefix
-      );
+    case "redis":
+      return new RedisCache(config.redis.url, config.redis.ttl, config.redis.key_prefix);
 
-    case 'memory':
+    case "memory":
     default:
-      return new MemoryCache(
-        config.memory.max_items,
-        config.memory.ttl
-      );
+      return new MemoryCache(config.memory.max_items, config.memory.ttl);
   }
 }
 
@@ -51,7 +49,7 @@ export function generateCacheKey(request: ChatCompletionRequest): string {
   };
 
   const json = JSON.stringify(keyData);
-  const hash = createHash('sha256').update(json).digest('hex');
+  const hash = createHash("sha256").update(json).digest("hex");
 
   return hash;
 }

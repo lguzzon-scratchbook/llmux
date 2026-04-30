@@ -1,48 +1,48 @@
-import { BaseProvider } from './base.js';
-import type { Config, Provider } from '../types.js';
-import { getLogger } from '../utils/logger.js';
+import { BaseProvider } from "./base.js";
+import type { Config, Provider } from "../types.js";
+import { getLogger } from "../utils/logger.js";
 
 // Provider-specific implementations can extend BaseProvider
 // For now, all providers use the standard OpenAI-compatible API
 
 class GroqProvider extends BaseProvider {
-  constructor(config: Config['providers']['groq']) {
-    super('groq', config);
+  constructor(config: Config["providers"]["groq"]) {
+    super("groq", config);
   }
 }
 
 class TogetherProvider extends BaseProvider {
-  constructor(config: Config['providers']['together']) {
-    super('together', config);
+  constructor(config: Config["providers"]["together"]) {
+    super("together", config);
   }
 }
 
 class CerebrasProvider extends BaseProvider {
-  constructor(config: Config['providers']['cerebras']) {
-    super('cerebras', config);
+  constructor(config: Config["providers"]["cerebras"]) {
+    super("cerebras", config);
   }
 }
 
 class SambanovaProvider extends BaseProvider {
-  constructor(config: Config['providers']['sambanova']) {
-    super('sambanova', config);
+  constructor(config: Config["providers"]["sambanova"]) {
+    super("sambanova", config);
   }
 }
 
 class OpenRouterProvider extends BaseProvider {
-  constructor(config: Config['providers']['openrouter']) {
-    super('openrouter', config);
+  constructor(config: Config["providers"]["openrouter"]) {
+    super("openrouter", config);
   }
 }
 
 // Generic provider for any OpenAI-compatible API
 class GenericProvider extends BaseProvider {
-  constructor(name: string, config: Config['providers'][string]) {
+  constructor(name: string, config: Config["providers"][string]) {
     super(name, config);
   }
 }
 
-const PROVIDER_CLASSES: Record<string, new (config: Config['providers'][string]) => Provider> = {
+const PROVIDER_CLASSES: Record<string, new (config: Config["providers"][string]) => Provider> = {
   groq: GroqProvider,
   together: TogetherProvider,
   cerebras: CerebrasProvider,
@@ -58,22 +58,23 @@ export class ProviderRegistry {
 
     for (const [name, providerConfig] of Object.entries(config.providers)) {
       if (!providerConfig.enabled) {
-        logger.debug({ provider: name }, 'Provider disabled, skipping');
+        logger.debug({ provider: name }, "Provider disabled, skipping");
         continue;
       }
 
       if (!providerConfig.api_key) {
-        logger.warn({ provider: name }, 'Provider enabled but no API key configured, skipping');
+        logger.warn({ provider: name }, "Provider enabled but no API key configured, skipping");
         continue;
       }
 
       const ProviderClass = PROVIDER_CLASSES[name] || GenericProvider;
-      const provider = name in PROVIDER_CLASSES
-        ? new ProviderClass(providerConfig)
-        : new GenericProvider(name, providerConfig);
+      const provider =
+        name in PROVIDER_CLASSES
+          ? new ProviderClass(providerConfig)
+          : new GenericProvider(name, providerConfig);
 
       this.providers.set(name, provider);
-      logger.info({ provider: name, models: providerConfig.models.length }, 'Provider registered');
+      logger.info({ provider: name, models: providerConfig.models.length }, "Provider registered");
     }
   }
 
@@ -97,6 +98,6 @@ export class ProviderRegistry {
    * Find providers that support a given model
    */
   findByModel(model: string): Provider[] {
-    return this.getAll().filter(p => p.supportsModel(model));
+    return this.getAll().filter((p) => p.supportsModel(model));
   }
 }

@@ -15,7 +15,7 @@ export interface ModelAlias {
 }
 
 export interface RoutingConfig {
-  default_strategy: 'round-robin' | 'random' | 'first-available' | 'latency';
+  default_strategy: "round-robin" | "random" | "first-available" | "latency";
   fallback_chain: string[];
   model_aliases: Record<string, ModelAlias>;
 }
@@ -33,7 +33,7 @@ export interface RedisCacheConfig {
 
 export interface CacheConfig {
   enabled: boolean;
-  backend: 'memory' | 'redis';
+  backend: "memory" | "redis";
   memory: MemoryCacheConfig;
   redis: RedisCacheConfig;
 }
@@ -51,7 +51,7 @@ export interface AuthConfig {
 }
 
 export interface LoggingConfig {
-  level: 'debug' | 'info' | 'warn' | 'error';
+  level: "debug" | "info" | "warn" | "error";
   pretty: boolean;
 }
 
@@ -67,7 +67,7 @@ export interface Config {
 // OpenAI-compatible request/response types
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string | null;
   name?: string;
   tool_calls?: ToolCall[];
@@ -76,7 +76,7 @@ export interface ChatMessage {
 
 export interface ToolCall {
   id: string;
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     arguments: string;
@@ -95,14 +95,14 @@ export interface ChatCompletionRequest {
   frequency_penalty?: number;
   user?: string;
   // llmux-specific options
-  provider?: string;  // Force specific provider
-  cache?: boolean;    // Override cache setting for this request
+  provider?: string; // Force specific provider
+  cache?: boolean; // Override cache setting for this request
 }
 
 export interface ChatCompletionChoice {
   index: number;
   message: ChatMessage;
-  finish_reason: 'stop' | 'length' | 'tool_calls' | null;
+  finish_reason: "stop" | "length" | "tool_calls" | null;
 }
 
 export interface Usage {
@@ -113,7 +113,7 @@ export interface Usage {
 
 export interface ChatCompletionResponse {
   id: string;
-  object: 'chat.completion';
+  object: "chat.completion";
   created: number;
   model: string;
   choices: ChatCompletionChoice[];
@@ -126,12 +126,12 @@ export interface ChatCompletionResponse {
 export interface StreamChoice {
   index: number;
   delta: Partial<ChatMessage>;
-  finish_reason: 'stop' | 'length' | 'tool_calls' | null;
+  finish_reason: "stop" | "length" | "tool_calls" | null;
 }
 
 export interface ChatCompletionChunk {
   id: string;
-  object: 'chat.completion.chunk';
+  object: "chat.completion.chunk";
   created: number;
   model: string;
   choices: StreamChoice[];

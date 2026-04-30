@@ -1,5 +1,5 @@
-import type { FastifyInstance } from 'fastify';
-import { ProviderRegistry } from '../providers/index.js';
+import type { FastifyInstance } from "fastify";
+import { ProviderRegistry } from "../providers/index.js";
 
 interface HealthRouteOptions {
   registry: ProviderRegistry;
@@ -7,20 +7,20 @@ interface HealthRouteOptions {
 
 export async function healthRoutes(
   fastify: FastifyInstance,
-  options: HealthRouteOptions
+  options: HealthRouteOptions,
 ): Promise<void> {
   const { registry } = options;
 
   // GET /health - Basic health check
-  fastify.get('/health', async () => {
+  fastify.get("/health", async () => {
     return {
-      status: 'ok',
+      status: "ok",
       timestamp: new Date().toISOString(),
     };
   });
 
   // GET /health/providers - Provider health status
-  fastify.get('/health/providers', async () => {
+  fastify.get("/health/providers", async () => {
     const providers = registry.getAll();
     const status: Record<string, { healthy: boolean; models: string[] }> = {};
 
@@ -31,22 +31,22 @@ export async function healthRoutes(
           healthy,
           models: provider.config.models,
         };
-      })
+      }),
     );
 
     return {
-      status: 'ok',
+      status: "ok",
       timestamp: new Date().toISOString(),
       providers: status,
     };
   });
 
   // GET /v1/models - OpenAI-compatible models endpoint
-  fastify.get('/v1/models', async () => {
+  fastify.get("/v1/models", async () => {
     const providers = registry.getAll();
     const models: Array<{
       id: string;
-      object: 'model';
+      object: "model";
       created: number;
       owned_by: string;
     }> = [];
@@ -55,7 +55,7 @@ export async function healthRoutes(
       for (const model of provider.config.models) {
         models.push({
           id: model,
-          object: 'model',
+          object: "model",
           created: Math.floor(Date.now() / 1000),
           owned_by: provider.name,
         });
@@ -63,7 +63,7 @@ export async function healthRoutes(
     }
 
     return {
-      object: 'list',
+      object: "list",
       data: models,
     };
   });

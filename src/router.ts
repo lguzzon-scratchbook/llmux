@@ -1,13 +1,13 @@
-import { getLogger } from './utils/logger.js';
-import { ProviderRegistry } from './providers/index.js';
+import { getLogger } from "./utils/logger.js";
+import { ProviderRegistry } from "./providers/index.js";
 import type {
   Config,
   ChatCompletionRequest,
   ChatCompletionResponse,
   ChatCompletionChunk,
-} from './types.js';
+} from "./types.js";
 
-export type RoutingStrategy = 'round-robin' | 'random' | 'first-available' | 'latency';
+export type RoutingStrategy = "round-robin" | "random" | "first-available" | "latency";
 
 export class Router {
   private registry: ProviderRegistry;
@@ -43,16 +43,16 @@ export class Router {
     const fallbackChain = this.config.routing.fallback_chain;
 
     // Filter to enabled providers in fallback chain
-    const availableProviders = fallbackChain.filter(name => this.registry.has(name));
+    const availableProviders = fallbackChain.filter((name) => this.registry.has(name));
 
     switch (strategy) {
-      case 'round-robin':
+      case "round-robin":
         return this.roundRobinOrder(availableProviders, request.model);
 
-      case 'random':
+      case "random":
         return this.shuffleArray([...availableProviders]);
 
-      case 'first-available':
+      case "first-available":
       default:
         return availableProviders;
     }
@@ -63,10 +63,7 @@ export class Router {
     const currentIndex = this.roundRobinIndex.get(key) || 0;
 
     // Rotate array starting from current index
-    const rotated = [
-      ...providers.slice(currentIndex),
-      ...providers.slice(0, currentIndex),
-    ];
+    const rotated = [...providers.slice(currentIndex), ...providers.slice(0, currentIndex)];
 
     // Update index for next request
     this.roundRobinIndex.set(key, (currentIndex + 1) % providers.length);
@@ -90,7 +87,7 @@ export class Router {
     const providerOrder = this.getProviderOrder(request);
 
     if (providerOrder.length === 0) {
-      throw new Error('No providers available for this request');
+      throw new Error("No providers available for this request");
     }
 
     let lastError: Error | null = null;
@@ -106,13 +103,16 @@ export class Router {
       if (!provider.supportsModel(resolvedModel)) {
         logger.debug(
           { provider: providerName, model: resolvedModel },
-          'Provider does not support model, trying next'
+          "Provider does not support model, trying next",
         );
         continue;
       }
 
       try {
-        logger.info({ provider: providerName, model: resolvedModel }, 'Routing request to provider');
+        logger.info(
+          { provider: providerName, model: resolvedModel },
+          "Routing request to provider",
+        );
 
         const response = await provider.chatCompletion({
           ...request,
@@ -124,14 +124,12 @@ export class Router {
         lastError = error as Error;
         logger.warn(
           { provider: providerName, error: lastError.message },
-          'Provider failed, trying fallback'
+          "Provider failed, trying fallback",
         );
       }
     }
 
-    throw new Error(
-      `All providers failed. Last error: ${lastError?.message || 'Unknown error'}`
-    );
+    throw new Error(`All providers failed. Last error: ${lastError?.message || "Unknown error"}`);
   }
 
   /**
@@ -139,13 +137,13 @@ export class Router {
    * Note: Fallback is attempted only before streaming starts
    */
   async *routeChatCompletionStream(
-    request: ChatCompletionRequest
+    request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk> {
     const logger = getLogger();
     const providerOrder = this.getProviderOrder(request);
 
     if (providerOrder.length === 0) {
-      throw new Error('No providers available for this request');
+      throw new Error("No providers available for this request");
     }
 
     let lastError: Error | null = null;
@@ -159,13 +157,16 @@ export class Router {
       if (!provider.supportsModel(resolvedModel)) {
         logger.debug(
           { provider: providerName, model: resolvedModel },
-          'Provider does not support model, trying next'
+          "Provider does not support model, trying next",
         );
         continue;
       }
 
       try {
-        logger.info({ provider: providerName, model: resolvedModel }, 'Routing stream request to provider');
+        logger.info(
+          { provider: providerName, model: resolvedModel },
+          "Routing stream request to provider",
+        );
 
         // Once streaming starts, we commit to this provider
         for await (const chunk of provider.chatCompletionStream({
@@ -181,13 +182,13 @@ export class Router {
         lastError = error as Error;
         logger.warn(
           { provider: providerName, error: lastError.message },
-          'Provider stream failed, trying fallback'
+          "Provider stream failed, trying fallback",
         );
       }
     }
 
     throw new Error(
-      `All providers failed for streaming. Last error: ${lastError?.message || 'Unknown error'}`
+      `All providers failed for streaming. Last error: ${lastError?.message || "Unknown error"}`,
     );
   }
 }

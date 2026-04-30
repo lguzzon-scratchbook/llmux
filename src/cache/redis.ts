@@ -1,13 +1,13 @@
-import Redis from 'ioredis';
-import type { Cache, ChatCompletionResponse } from '../types.js';
-import { getLogger } from '../utils/logger.js';
+import Redis from "ioredis";
+import type { Cache, ChatCompletionResponse } from "../types.js";
+import { getLogger } from "../utils/logger.js";
 
 export class RedisCache implements Cache {
   private client: Redis.default;
   private ttl: number;
   private keyPrefix: string;
 
-  constructor(url: string, ttlSeconds: number = 3600, keyPrefix: string = 'llmux:') {
+  constructor(url: string, ttlSeconds: number = 3600, keyPrefix: string = "llmux:") {
     this.client = new Redis.default(url, {
       lazyConnect: true,
       maxRetriesPerRequest: 3,
@@ -15,12 +15,12 @@ export class RedisCache implements Cache {
     this.ttl = ttlSeconds;
     this.keyPrefix = keyPrefix;
 
-    this.client.on('error', (err: Error) => {
-      getLogger().error({ error: err.message }, 'Redis connection error');
+    this.client.on("error", (err: Error) => {
+      getLogger().error({ error: err.message }, "Redis connection error");
     });
 
-    this.client.on('connect', () => {
-      getLogger().info('Redis cache connected');
+    this.client.on("connect", () => {
+      getLogger().info("Redis cache connected");
     });
   }
 
@@ -36,28 +36,24 @@ export class RedisCache implements Cache {
     try {
       const value = await this.client.get(this.prefixedKey(key));
       if (value) {
-        getLogger().debug({ key: key.slice(0, 32) + '...' }, 'Redis cache hit');
+        getLogger().debug({ key: key.slice(0, 32) + "..." }, "Redis cache hit");
         const parsed = JSON.parse(value) as ChatCompletionResponse;
         return { ...parsed, cached: true };
       }
-      getLogger().debug({ key: key.slice(0, 32) + '...' }, 'Redis cache miss');
+      getLogger().debug({ key: key.slice(0, 32) + "..." }, "Redis cache miss");
       return null;
     } catch (error) {
-      getLogger().warn({ error: (error as Error).message }, 'Redis get error');
+      getLogger().warn({ error: (error as Error).message }, "Redis get error");
       return null;
     }
   }
 
   async set(key: string, value: ChatCompletionResponse): Promise<void> {
     try {
-      await this.client.setex(
-        this.prefixedKey(key),
-        this.ttl,
-        JSON.stringify(value)
-      );
-      getLogger().debug({ key: key.slice(0, 32) + '...' }, 'Redis cache set');
+      await this.client.setex(this.prefixedKey(key), this.ttl, JSON.stringify(value));
+      getLogger().debug({ key: key.slice(0, 32) + "..." }, "Redis cache set");
     } catch (error) {
-      getLogger().warn({ error: (error as Error).message }, 'Redis set error');
+      getLogger().warn({ error: (error as Error).message }, "Redis set error");
     }
   }
 
@@ -65,7 +61,7 @@ export class RedisCache implements Cache {
     try {
       await this.client.del(this.prefixedKey(key));
     } catch (error) {
-      getLogger().warn({ error: (error as Error).message }, 'Redis delete error');
+      getLogger().warn({ error: (error as Error).message }, "Redis delete error");
     }
   }
 
@@ -75,9 +71,9 @@ export class RedisCache implements Cache {
       if (keys.length > 0) {
         await this.client.del(...keys);
       }
-      getLogger().info('Redis cache cleared');
+      getLogger().info("Redis cache cleared");
     } catch (error) {
-      getLogger().warn({ error: (error as Error).message }, 'Redis clear error');
+      getLogger().warn({ error: (error as Error).message }, "Redis clear error");
     }
   }
 
