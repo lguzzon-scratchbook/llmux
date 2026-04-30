@@ -2,70 +2,68 @@
 
 # src/utils
 
-Cross-cutting infrastructure utilities for configuration loading with environment variable interpolation and structured logging via pino singleton.
+Infrastructure utilities providing configuration loading, logging singleton, and cache/SSE helper functions for the proxy server.
 
 ## Contents
 
 ### Configuration
 
-- [config.ts](./config.ts) — YAML config loader with `${VAR}` interpolation and validation. Exports `loadConfig()`, `getEnabledProviders()`.
+[config.ts](./config.ts) loads YAML configs with `${VAR}` env var interpolation, exports `loadConfig` and `getEnabledProviders`.
 
 ### Logging
 
-- [logger.ts](./logger.ts) — Pino logger singleton with optional pretty-print transport. Exports `createLogger()`, `getLogger()`.
+[logger.ts](./logger.ts) configures pino singleton with optional pretty transport, exports `createLogger` and `getLogger`.
 
-## API Surface
+### Cache Helpers
 
-| Export                | Source    | Signature                                |
-| --------------------- | --------- | ---------------------------------------- |
-| `loadConfig`          | config.ts | `(configPath?: string) => Config`        |
-| `getEnabledProviders` | config.ts | `(config: Config) => string[]`           |
-| `createLogger`        | logger.ts | `(config: LoggingConfig) => pino.Logger` |
-| `getLogger`           | logger.ts | `() => pino.Logger`                      |
+[cache-utils.ts](./cache-utils.ts) provides `truncateKeyForLogging`, `sanitizeProviderRequest`, and `SSE_DONE_SENTINEL` constant.
 
 ## Behavioral Contracts
 
 ### Environment Variable Interpolation
 
-Regex: `/\$\{([^}]+)\}/g`
+- **Regex pattern**: `/\$\{([^}]+)\}/g`
+- **Supported formats**: `${VAR}` or `${VAR:-default}`
+- **Recursive interpolation**: applies to strings, arrays, and nested objects
 
-- Matches `${VAR}` and `${VAR:-default}` patterns
-- Applied recursively via `interpolateConfig<T>()` to strings, arrays, objects
+### Configuration Validation
 
-### Config Search Paths
+- **Required**: `server.port` must exist
+- **Minimum providers**: at least one provider configured
+- **Enabled providers**: at least one `provider.enabled` with `provider.api_key` set
+- **Fallback chain**: entries must reference existing provider names
 
-```javascript
-CONFIG_PATHS = ["./config/config.yaml", "./config/config.yml", "./config.yaml", "./config.yml"];
-```
+### Configuration Search Paths
 
-### Validation Rules
+`['./config/config.yaml', './config/config.yml', './config.yaml', './config.yml']` (searched in order)
 
-- `server.port` required
-- At least one provider configured
-- At least one provider `enabled` with `api_key` set
-- `routing.fallback_chain` entries must reference existing provider names
+### Error Messages
 
-### Logger Pretty Transport
+- Config not found: `"Configuration file not found. Searched: [paths]. Copy config/config.example.yaml to config/config/config.yaml and configure it."`
+- Missing `server.port`: `"Configuration missing: server.port"`
+- No providers: `"Configuration missing: at least one provider must be configured"`
+- No enabled providers: `"No providers are enabled with valid API keys"`
+- Invalid fallback: `"Fallback chain references unknown provider: ${providerName}"`
+
+### SSE Protocol
+
+- **Stream end marker**: `SSE_DONE_SENTINEL = "data: [DONE]"`
+
+### Pino-Pretty Transport
 
 When `config.pretty` truthy:
-
 - `target: 'pino-pretty'`
 - `options.colorize: true`
 - `options.translateTime: 'SYS:standard'`
 - `options.ignore: 'pid,hostname'`
 
-### Error Messages
+## Patterns
 
-| Condition             | Message                                                                                                                    |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Config not found      | `Configuration file not found. Searched: [paths]. Copy config/config.example.yaml to config/config.yaml and configure it.` |
-| Missing `server.port` | `Configuration missing: server.port`                                                                                       |
-| No providers          | `Configuration missing: at least one provider must be configured`                                                          |
-| No enabled providers  | `No providers are enabled with valid API keys`                                                                             |
-| Invalid fallback      | `Fallback chain references unknown provider: ${providerName}`                                                              |
+**Singleton with lazy initialization** in logger.ts — module-scoped `logger` holds single instance. `createLogger` sets explicit config; `getLogger` provides global access with default level `'info'` if uninitialized.
 
 ## File Relationships
 
-- `config.ts` imports `Config` from `../types.js`
-- `logger.ts` imports `LoggingConfig` from `../types.js`
-- `getLogger()` auto-creates logger with level `'info'` if `createLogger()` never called
+All utilities import types from `../types.js`:
+- cache-utils.ts imports `ChatCompletionRequest`
+- config.ts imports `Config`
+- logger.ts imports `LoggingConfig`

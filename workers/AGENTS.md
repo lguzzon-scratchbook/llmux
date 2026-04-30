@@ -2,102 +2,23 @@
 
 # workers
 
-llmux Cloudflare Workers Edition — edge-deployed LLM proxy using Hono framework with KV-backed caching. Global edge deployment via Cloudflare Workers, zero cold starts, OpenAI-compatible chat completion API with multi-provider routing, streaming support, and built-in dashboard UI.
-
-## Stack
-
-**Package:** `llmux-workers` (ESM)
-
-**Scripts:** `dev="wrangler dev"`, `deploy="wrangler deploy"`, `typecheck="tsc --noEmit"`
-
-**Runtime:** Cloudflare Workers (V8 isolates)
-
-**Framework:** `hono ^4.6.0`
-
-**Storage:** Cloudflare KV (`CACHE` binding)
-
-**Language:** TypeScript 5.7.2 targeting ES2022
+Edge-deployed variant of llmux LLM proxy for Cloudflare Workers runtime using Hono framework with KV-backed caching and global edge deployment.
 
 ## Contents
 
 ### Configuration
+- [README.md](./README.md) documents Workers edition setup, environment variables, and architecture differences
+- [package.json](./package.json) defines "llmux-workers" package with wrangler dev/deploy scripts
+- [tsconfig.json](./tsconfig.json) configures ES2022 target with @cloudflare/workers-types
+- [wrangler.toml](./wrangler.toml) configures KV binding, secrets, environment vars, and compatibility date
 
-- [README.md](./README.md) — Setup commands, KV namespace creation, secret configuration, architecture comparison vs Node.js
-- [wrangler.toml](./wrangler.toml) — Worker manifest: `name="llmux"`, `main="src/index.ts"`, `compatibility_date="2024-12-01"`, KV binding, vars `CACHE_TTL`, `DEFAULT_STRATEGY`, `FALLBACK_CHAIN`
-- [tsconfig.json](./tsconfig.json) — TypeScript compiler config: `target:"ES2022"`, `module:"ESNext"`, `moduleResolution:"Bundler"`, types `@cloudflare/workers-types`
+### Subdirectories
+- [workers/src/](./workers/src/) contains application logic: router, auth, cache, providers, types
 
-### Package Manifest
+## Stack
 
-- [package.json](./package.json) — ESM package definition, scripts, dependencies, devDependencies
-
-## Subdirectories
-
-### src/
-
-[workers/src/](./src/) — Hono-based gateway implementation. Exports default `app` (Workers entry), routes for `/health`, `/v1/models`, `/v1/chat/completions`, `/v1/responses`. Contains `auth.ts` with Bearer token validation against `LLMUX_API_KEY`/`LLMUX_API_KEYS`, `cache.ts` with djb2-based KV keys, `providers.ts` with `PROVIDER_CONFIGS` and `MODEL_ALIASES`, `router.ts` with `routeChatCompletion` and fallback chain execution, `types.ts` with `Env` interface and OpenAI-compatible types, `dashboard.html` embedded UI, `html.d.ts` module declarations.
+Hono ^4.6.0 web framework, Wrangler 3.93.0 deployment tool, TypeScript 5.7.2, @cloudflare/workers-types 4.20241127.0 runtime types. Package.json exports `dev="wrangler dev"`, `deploy="wrangler deploy"`, `typecheck="tsc --noEmit"`.
 
 ## Configuration
 
-**Environment Variables (Vars):**
-
-- `CACHE_TTL` — KV expiration seconds, default `3600`
-- `DEFAULT_STRATEGY` — routing algorithm: `round-robin`, `random`, `first-available`
-- `FALLBACK_CHAIN` — comma-separated provider order override: `"groq,cerebras,together,sambanova,openrouter"`
-
-**Secrets:**
-
-- `LLMUX_API_KEY` — single proxy auth key (legacy)
-- `LLMUX_API_KEYS` — JSON map `Record<label, key>` for multi-key auth
-- `GROQ_API_KEY`, `TOGETHER_API_KEY`, `CEREBRAS_API_KEY`, `SAMBANOVA_API_KEY`, `OPENROUTER_API_KEY` — provider API keys
-
-**Workers Bindings:**
-
-- `CACHE` — KVNamespace instance for request/response caching
-
-## API Surface
-
-OpenAI-compatible endpoints exposed in `src/index.ts`:
-
-| Route                  | Method | Auth   | Description                             |
-| ---------------------- | ------ | ------ | --------------------------------------- |
-| `/health`              | GET    | No     | Status, timestamp, runtime info         |
-| `/health/providers`    | GET    | No     | Configured providers with models        |
-| `/v1/models`           | GET    | Bearer | Flattened model list from all providers |
-| `/v1/chat/completions` | POST   | Bearer | Chat completion with optional `stream`  |
-| `/v1/responses`        | POST   | Bearer | OpenResponses API format                |
-| `/`, `/dashboard`      | GET    | No     | Serve embedded `dashboard.html` UI      |
-
-All `/v1/*` routes require `Authorization: Bearer <key>` header unless no keys configured (anonymous mode).
-
-## Behavioral Contracts
-
-### Cache Key Format
-
-```
-llmux:${Math.abs(hash).toString(16)}:${json.length}
-```
-
-Hash algorithm: `hash = ((hash << 5) - hash) + char; hash = hash & hash` (32-bit truncation). Input JSON includes `model`, `messages`, `temperature`, `top_p`, `max_tokens`, `stop`, `presence_penalty`, `frequency_penalty`.
-
-### Auth Header Patterns
-
-- Legacy: `LLMUX_API_KEY` env var, label `"default"`
-- Multi-key: `LLMUX_API_KEYS` JSON `Record<label, key>`; example: `{"alice":"sk-xxx","bob":"sk-yyy"}`
-- Header format: `Bearer <key>` or raw key (no prefix)
-
-### Response ID Generation
-
-```javascript
-`resp_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}``msg_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-```
-
-### Streaming SSE Parsing
-
-Sentinel line: `[DONE]`. Content extraction:
-
-- Chat completions: `json.choices?.[0]?.delta?.content`
-- Responses API: `json.type === 'response.output_text.delta' ? json.delta : null`
-
-### Silent Failures
-
-All cache errors swallowed in empty `catch` blocks. Streaming requests excluded from cache via early return: `if (request.stream) return;`
+wrangler.toml binds KV namespace `CACHE`, sets `compatibility_date="2024-12-01"`, defines vars `CACHE_TTL="360"`, `DEFAULT_STRATEGY="round-robin"`, `FALLBACK_CHAIN="groq,cerebras,together,sambanova,openrouter"`. Secrets: `LLMUX_API_KEY`, `GROQ_API_KEY`, `TOGETHER_API_KEY`, `CEREBRAS_API_KEY`, `SAMBANOVA_API_KEY`, `OPENROUTER_API_KEY`.

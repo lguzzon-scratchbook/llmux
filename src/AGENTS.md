@@ -2,249 +2,66 @@
 
 # src
 
-Entry point and core orchestration layer for llmux LLM proxy. Contains server bootstrap, routing logic, type definitions for OpenAI-compatible and OpenResponses APIs, response caching, and provider request routing with fallback strategies.
+Core application layer for llmux LLM proxy. Orchestrates Fastify server initialization, request routing across providers, caching, response storage, and defines all TypeScript type contracts for Openness-compatible and OpenResponses APIs.
 
 ## Contents
 
-### Server Bootstrap
-
-- **[index.ts](./index.ts)** — Fastify server initialization. Exports `main()` orchestrating `loadConfig()` → `ProviderRegistry()` → `Router()` → `CacheManager()` → `ResponseStore()` → route registration → graceful shutdown handlers. Registers `healthRoutes`, `chatRoutes`, `responsesRoutes` with dependency injection.
+### Server Entry Point
+- [index.ts](./index.ts) Main entry point, initializes ProviderRegistry, Router, CacheManager, ResponseStore, Fastify instance with auth middleware, registers routes, handles SIGTERM/SIGINT graceful shutdown
 
 ### Type Definitions
+- [types.ts](./types.ts) Defines Config, ProviderConfig, RoutingConfig, CacheConfig, AuthConfig, LoggingConfig, OpenAI-compatible types (ChatCompletionRequest, ChatCompletionResponse, StreamChoice), Provider interface, Cache interface
+- [open-responses-types.ts](./open-responses-types.ts) Defines OpenResponses API types: ItemStatus, ResponseStatus, MessageItem, FunctionCallItem, Tool, ResponseRequest, Response, StreamEvent (12 event types), utility functions generateId(), normalizeInput()
 
-- **[types.ts](./types.ts)** — Core configuration types (`Config`, `ProviderConfig`, `RoutingConfig`, `CacheConfig`) and OpenAI-compatible API types (`ChatCompletionRequest`, `ChatCompletionResponse`, `ChatMessage`, `ToolCall`). Exports `Provider` and `Cache` service interfaces.
-
-- **[open-responses-types.ts](./open-responses-types.ts)** — OpenResponses API types per https://www.openresponses.org/specification. Exports `ResponseRequest`, `Response`, `ResponseUsage`, streaming event types (`StreamEvent`, `ResponseCreatedEvent`, `OutputTextDeltaEvent`, etc.), item types (`MessageItem`, `FunctionCallItem`, `InputItem`), and utilities `generateId(prefix)`, `normalizeInput()`.
-
-### Request Routing
-
-- **[router.ts](./router.ts)** — `Router` class implementing multi-provider routing with `RoutingStrategy` (`'round-robin'`, `'random'`, `'first-available'`, `'latency'`). Exports `resolveModelAlias()`, `getProviderOrder()`, `routeChatCompletion()`, `routeChatCompletionStream()` with automatic fallback across provider chain.
-
-### Response Storage
-
-- **[response-store.ts](./response-store.ts)** — `ResponseStore` class wrapping LRU cache for `previous_response_id` support. Exports `StoredResponse` type, `get()`, `set()`, `delete()`, `clear()`, `size()` methods with 1000-item/1h-TTL defaults.
+### Routing & Caching
+- [router.ts](./router.ts) Router class routes ChatCompletionRequest across providers using 'round-robin'|'random'|'first-available'|'latency' strategies with automatic fallback, model alias resolution via resolveModelAlias()
+- [response-store.ts](./response-store.ts) ResponseStore wraps LRU cache for previous_response_id support, exports StoredResponse type, max=1000, ttl=3600000ms
 
 ## Subdirectories
 
-### [adapters/](./adapters/)
+- [__tests__/](./__tests__/) bun:test suite covering auth, cache, config loading, response-store, utils, binary builds, Fireworks provider integration
+- [adapters/](./adapters/) OpenAI adapter implementations
+- [cache/](./cache/) Cache backends (memory, redis) and CacheManager factory
+- [middleware/](./middleware/) Auth middleware for API key validation
+- [providers/](./providers/) Base Provider class and provider implementations
+- [routes/](./routes/) Fastify route handlers (health, chat, responses)
+- [utils/](./utils/) Configuration loader, logger factory, cache utilities
 
-Protocol adapters converting between OpenAI Chat Completions API and OpenResponses types. Contains `toOpenAIChatRequest()`, `fromOpenAIChatResponse()`, `streamToEvents()` for bidirectional transformation.
+## Initialization Flow
 
-### [cache/](./cache/)
+`index.ts` main() executes: `loadConfig()` → `createLogger(config.logging)` → `ProviderRegistry(config)` → exit if no providers → `Router(registry, config)` → `CacheManager(config.cache)` → `ResponseStore(1000, 3600000)` → `Fastify({logger: false, bodyLimit: 10MB})` → `createAuthMiddleware(config)` registered as preHandler → `fastify.register(healthRoutes)` → `fastify.register(chatRoutes)` → `fastify.register(responsesRoutes)` → listen.
 
-Pluggable caching backends. Factory pattern with `createCache()` returning `MemoryCache` (LRU) or `RedisCache` (ioredis) based on `CacheConfig.backend`.
+## Routing Architecture
 
-### [middleware/](./middleware/)
-
-Fastify middleware factory. `createAuthMiddleware()` validates Bearer tokens against `config.auth.api_key` or `config.auth.api_keys`, attaches `clientLabel` to requests.
-
-### [providers/](./providers/)
-
-LLM provider abstraction. `BaseProvider` implements OpenAI-compatible client pattern; `ProviderRegistry` instantiates provider-specific classes (`GroqProvider`, `TogetherProvider`, etc.) from Config.
-
-### [routes/](./routes/)
-
-HTTP route handlers. Registers OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`) and OpenResponses endpoints (`/v1/responses`) with SSE streaming support.
-
-### [utils/](./utils/)
-
-Cross-cutting utilities. `loadConfig()` with `${VAR}` environment interpolation; `createLogger()` / `getLogger()` pino singleton with optional pretty-print transport.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           index.ts                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  │
-│  │loadConfig() │  │ProviderReg. │  │   Router    │  │CacheMgr. │  │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └────┬─────┘  │
-│         │                │                │              │        │
-│         ▼                ▼                ▼              ▼        │
-│    Config         Provider[]         Routing       MemoryCache/    │
-│  (YAML+env)       instances          Strategy      RedisCache      │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │  Fastify preHandler: auth.ts middleware                     │  │
-│  │  Routes: chat.ts (/v1/chat/completions)                    │  │
-│  │         responses.ts (/v1/responses)                         │  │
-│  │         health.ts (/health, /v1/models)                      │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Request Flow (Chat Completions)**:
-
-1. `POST /v1/chat/completions` hits `chat.ts`
-2. `CacheManager.get()` checks for cached response
-3. `Router.routeChatCompletion()` selects provider via strategy
-4. `BaseProvider.chatCompletion()` calls upstream LLM
-5. Response cached via `CacheManager.set()` and returned
-
-**Request Flow (OpenResponses)**:
-
-1. `POST /v1/responses` hits `responses.ts`
-2. `previous_response_id` resolved via `ResponseStore.get()`
-3. `toOpenAIChatRequest()` converts OpenResponses → OpenAI format
-4. Router/provider flow as above
-5. `fromOpenAIChatResponse()` converts response format
-6. Stored in `ResponseStore.set()` for chaining
-
-## Stack
-
-- **Runtime:** Node.js with TypeScript
-- **Server:** Fastify (bodyLimit: 10MB)
-- **Caching:** `lru-cache` (memory), `ioredis` (Redis)
-- **Logging:** pino with optional pino-pretty
-- **Config:** YAML with environment variable interpolation
-
-## File Relationships
-
-| Consumer                     | Provider                     | Symbols Used                                                                  |
-| ---------------------------- | ---------------------------- | ----------------------------------------------------------------------------- |
-| `index.ts`                   | `utils/config.ts`            | `loadConfig()`                                                                |
-| `index.ts`                   | `utils/logger.ts`            | `createLogger()`, `getLogger()`                                               |
-| `index.ts`                   | `providers/index.ts`         | `ProviderRegistry`                                                            |
-| `index.ts`                   | `router.ts`                  | `Router`                                                                      |
-| `index.ts`                   | `cache/index.ts`             | `CacheManager`                                                                |
-| `index.ts`                   | `response-store.ts`          | `ResponseStore`                                                               |
-| `index.ts`                   | `routes/health.ts`           | `healthRoutes()`                                                              |
-| `index.ts`                   | `routes/chat.ts`             | `chatRoutes()`                                                                |
-| `index.ts`                   | `routes/responses.ts`        | `responsesRoutes()`                                                           |
-| `router.ts`                  | `types.ts`                   | `ChatCompletionRequest`, `ChatCompletionResponse`, `Provider`                 |
-| `router.ts`                  | `providers/index.ts`         | `ProviderRegistry` (via constructor)                                          |
-| `adapters/openai-adapter.ts` | `open-responses-types.ts`    | `ResponseRequest`, `Response`, `generateId()`, `normalizeInput()`             |
-| `adapters/openai-adapter.ts` | `types.ts`                   | `ChatCompletionRequest`, `ChatCompletionResponse`, `ChatCompletionChunk`      |
-| `routes/chat.ts`             | `types.ts`                   | `ChatCompletionRequest`                                                       |
-| `routes/chat.ts`             | `router.ts`                  | `Router`                                                                      |
-| `routes/chat.ts`             | `cache/index.ts`             | `CacheManager`                                                                |
-| `routes/responses.ts`        | `open-responses-types.ts`    | `ResponseRequest`, `Response`, `InputItem`, `StreamEvent`, `normalizeInput()` |
-| `routes/responses.ts`        | `adapters/openai-adapter.ts` | `toOpenAIChatRequest()`, `fromOpenAIChatResponse()`, `streamToEvents()`       |
-| `routes/responses.ts`        | `response-store.ts`          | `ResponseStore`                                                               |
-| `routes/health.ts`           | `providers/index.ts`         | `ProviderRegistry`                                                            |
+`router.ts` Router selects providers via `getProviderOrder()`: if `request.provider` specified, validates via `registry.has()` and returns singleton; otherwise filters `config.routing.fallback_chain` by availability, applies strategy: 'round-robin' rotates via per-model `roundRobinIndex` Map; 'random' uses Fisher-Yates shuffle; 'first-available' returns chain order. `routeChatCompletion()` and `routeChatCompletionStream()` iterate providers, validate model support via `provider.supportsModel()`, call provider with resolved model alias from `resolveModelAlias()`. No mid-stream fallback for streaming.
 
 ## API Surface
 
-### Core Types (types.ts)
+Fastify server exposes: `POST /v1/chat/completions` (OpenAI-compatible), `GET /v1/models`, `GET /health`, `GET /health/providers`. Error handler returns HTTP 500 with `{"error":{"message":"Internal server error","type":"api_error","code":"internal_error"}}`.
 
-```typescript
-(Config, ProviderConfig, RoutingConfig, CacheConfig, AuthConfig);
-(ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ToolCall);
-(Provider, Cache);
-```
+## Type Contracts
 
-### OpenResponses Types (open-responses-types.ts)
+### OpenAI Types
+`ChatCompletionRequest`: model, messages[], temperature?, top_p?, max_tokens?, stream?, stop?, provider?, cache?
+`ChatCompletionResponse`: id, choices[], usage, provider?, cached?
+`StreamChoice`: delta (Partial<ChatMessage>), finish_reason
 
-```typescript
-ResponseRequest, Response, ResponseUsage, ResponseStatus, ItemStatus
-InputItem, OutputItem, MessageItem, FunctionCallItem, FunctionCallOutputItem
-StreamEvent, OutputTextDeltaEvent, FunctionCallArgumentsDeltaEvent
-Tool, ToolChoice, FunctionTool
-generateId(prefix: string): string
-normalizeInput(input): InputItem[]
-```
+### OpenResponses Types
+`ResponseRequest`: model, input (InputItem[]|string), tools[], tool_choice, previous_response_id?, stream?, provider?, cache?
+`Response`: id, status (in_progress|incomplete|completed|failed), output (OutputItem[]), error?, usage?, cached?
+`StreamEvent`: union of ResponseCreatedEvent, ResponseInProgressEvent, ResponseCompletedEvent, ResponseFailedEvent, OutputItemAddedEvent, OutputItemDoneEvent, ContentPartAddedEvent, ContentPartDoneEvent, OutputTextDeltaEvent, OutputTextDoneEvent, FunctionCallArgumentsDeltaEvent, FunctionCallArgumentsDoneEvent
 
-### Router (router.ts)
-
-```typescript
-type RoutingStrategy = "round-robin" | "random" | "first-available" | "latency";
-class Router {
-  constructor(registry: ProviderRegistry, config: Config);
-  resolveModelAlias(model: string, providerName: string): string;
-  getProviderOrder(request: ChatCompletionRequest): string[];
-  routeChatCompletion(request): Promise<ChatCompletionResponse>;
-  routeChatCompletionStream(request): AsyncIterable<ChatCompletionChunk>;
-}
-```
-
-### Response Store (response-store.ts)
-
-```typescript
-interface StoredResponse {
-  response: Response;
-  input: InputItem[];
-}
-class ResponseStore {
-  constructor(maxItems?: number, ttlMs?: number);
-  get(id: string): StoredResponse | null;
-  set(id: string, response: Response, input: InputItem[]): void;
-  delete(id: string): void;
-  clear(): void;
-  size(): number;
-}
-```
+### Service Interfaces
+`Provider`: name, config, isHealthy(), chatCompletion(req), chatStream(req), supportsModel()
+`Cache`: get(key), set(key, value), delete(key), clear()
 
 ## Behavioral Contracts
 
-### ID Generation Pattern
+### String Shorthand Expansion
+`normalizeInput(input)` in open-responses-types.ts transforms `input: "hello"` → `[{type: 'message', role: 'user', content: [{type: 'input_text', text: 'hello'}]}]`
 
-```typescript
-generateId("resp"); // resp_<32-char-alphanumeric>
-generateId("msg"); // msg_<32-char-alphanumeric>
-generateId("fc"); // fc_<32-char-alphanumeric>
-generateId("call"); // call_<32-char-alphanumeric>
-```
+### ID Generation
+`generateId(prefix)` returns `${prefix}_${32-char-random}` using charset `abcdefghijklmnopqrstuvwxyz0123456789`
 
-Charset: `abcdefghijklmnopqrstuvwxyz0123456789`
-
-### Cache Key Algorithm
-
-```typescript
-SHA256(
-  JSON.stringify({
-    model,
-    messages,
-    temperature,
-    top_p,
-    max_tokens,
-    stop,
-    presence_penalty,
-    frequency_penalty,
-  }),
-);
-```
-
-### Routing Strategy Algorithms
-
-- **round-robin**: `Map<model, index>` counter, `(current + 1) % providers.length`
-- **random**: Fisher-Yates shuffle via `shuffleArray<T>(array: T[]): T[]`
-- **first-available**: Filter chain by `registry.has()` and `provider.isHealthy()`
-- **latency**: Falls through to first-available (unimplemented)
-
-### Stream Event Sequence
-
-```
-response.created → response.in_progress → response.output_item.added →
-response.content_part.added → response.output_text.delta →
-[response.function_call_arguments.delta → response.function_call_arguments.done] →
-response.output_text.done → response.content_part.done →
-response.output_item.done → response.completed
-```
-
-### Error Response Schema
-
-```typescript
-// Validation errors (400)
-{ error: { message: string, type: 'invalid_request_error', code: string } }
-
-// Auth errors (401)
-{ error: { message: string, type: 'authentication_error', code: 'missing_api_key' | 'invalid_api_key' } }
-
-// Provider errors (502)
-{ error: { message: string, type: 'api_error', code: 'provider_error' } }
-
-// Internal errors (500)
-{ error: { message: 'Internal server error', type: 'api_error', code: 'internal_error' } }
-```
-
-### Environment Variable Interpolation
-
-Regex: `/\$\{([^}]+)\}/g`
-
-- Supports `${VAR}` and `${VAR:-default}`
-- Applied recursively to config object
-
-### Timestamp Formats
-
-- `created` (Unix epoch seconds): `Math.floor(Date.now() / 1000)`
-- `timestamp` (ISO 8601): `new Date().toISOString()`
-- `created_at` (OpenResponses, Unix seconds): Same as `created`
+### llmux Extensions
+Non-standard fields extend OpenResponses spec: `provider?: string` and `cache?: boolean` in ResponseRequest, `cached?: boolean` in Response

@@ -2,195 +2,76 @@
 
 # llmux
 
-LLM inference proxy exposing OpenAI-compatible `/v1/chat/completions` and `/v1/responses` endpoints. Routes requests across Groq, Together, Cerebras, SambaNova, and OpenRouter with configurable strategies (round-robin, random, first-available) and automatic fallback chains. Supports streaming responses, memory/Redis caching, and dual deployment targets: Node.js server (Docker/Fly.io) and Cloudflare Workers.
+Root directory for llmux, a unified LLM inference proxy routing requests across Groq, Together, Cerebras, SambaNova, and OpenRouter with automatic fallbacks, caching, and OpenAI/OpenResponses API compatibility.
 
 ## Stack
 
-**Package:** `llmux` (ESM, Node.js ≥20.0.0)
+- **Runtime**: Bun ^1.2.0, Node.js 20 Alpine
+- **Framework**: Fastify ^5.8.5
+- **Language**: TypeScript ^6.0.3 with oxc-transform compilation
+- **Entry point**: dist/index.js
+- **Key deps**: yaml, pino, lru-cache, ioredis, undici, dotenv
 
-**Entry:** `dist/index.js` (compiled from `src/index.ts`)
+## Scripts
 
-**Scripts:** `dev="tsx watch src/index.ts"`, `build="tsc"`, `start="node dist/index.js"`
-
-**Framework:** `fastify ^5` with `@fastify/cors`
-
-**Key Dependencies:** `yaml ^2` (config parsing), `pino ^9`/`pino-pretty ^13` (structured logging), `lru-cache ^11` (in-memory cache), `ioredis ^5` (Redis client), `undici ^7` (HTTP client), `dotenv ^16` (env loading)
-
-**TypeScript:** `typescript ^5.7` targeting ES2022 with `module: NodeNext`, `strict: true`
+- `bun run dev` - Watch mode development server
+- `bun run build` - Compile TypeScript to dist/
+- `bun run start` - Production server
 
 ## Contents
 
-### Entry & Types
+### Build & Deployment
+- [Dockerfile](./Dockerfile) Multi-stage build (builder/runner stages) with non-root user llmux:1001, health check on /health, port 3000
+- [docker-compose.yml](./docker-compose.yml) Orchestrates llmux + redis services with config/config.yaml read-only mount
+- [fly.toml](./fly.toml) Fly.io deployment config: sjc region, 512mb VM, auto-scaling, /health check
 
-- [src/index.ts](./src/index.ts) — Fastify server bootstrap, plugin registration, startup/shutdown hooks
-- [src/types.ts](./src/types.ts) — Core TypeScript interfaces: `Provider`, `ChatCompletionRequest`, `ModelInfo`, `Config`
-- [src/open-responses-types.ts](./src/open-responses-types.ts) — OpenResponses API type definitions: `ResponseRequest`, `ResponseOutput`, `ResponseItem`
+### Project Config
+- [package.json](./package.json) Bun workspace config, Fastify-based server, dev deps: oxc-transform, oxfmt, oxlint
+- [tsconfig.json](./tsconfig.json) ES2022 NodeNext strict mode, src/ root, dist/ output
 
-### Routing
-
-- [src/router.ts](./src/router.ts) — `selectProvider(request, config)` strategy dispatcher; `fallbackChain()` executor for provider retries on failure
-- [src/routes/chat.ts](./src/routes/chat.ts) — `/v1/chat/completions` POST handler, request normalization, streaming/non-streaming response branches
-- [src/routes/responses.ts](./src/routes/responses.ts) — `/v1/responses` POST handler for OpenResponses format, `previous_response_id` continuation support
-- [src/routes/health.ts](./src/routes/health.ts) — `/health` and `/health/providers` GET endpoints
-
-### Providers & Adapters
-
-- [src/providers/base.ts](./src/providers/base.ts) — Abstract `BaseProvider` class with `chatCompletion()`, `getModels()`, `isAvailable()` contracts
-- [src/providers/index.ts](./src/providers/index.ts) — Provider registry: `GroqProvider`, `TogetherProvider`, `CerebrasProvider`, `SambaNovaProvider`, `OpenRouterProvider` exports
-- [src/adapters/openai-adapter.ts](./src/adapters/openai-adapter.ts) — Response normalization: OpenAI-format → internal types, choice/delta extraction for streaming
-
-### Caching & Storage
-
-- [src/cache/index.ts](./src/cache/index.ts) — Cache factory: `createCache(config)` returns `MemoryCache | RedisCache` based on `cache.backend`
-- [src/cache/memory.ts](./src/cache/memory.ts) — `LRUCache`-backed implementation with `get(key)`, `set(key, value, ttl)`, `clear()` methods
-- [src/cache/redis.ts](./src/cache/redis.ts) — `ioredis`-backed implementation with JSON serialization, TTL support, connection pooling
-- [src/response-store.ts](./src/response-store.ts) — `previous_response_id` state persistence: `storeResponse(id, data)`, `getResponse(id)`, `cleanup()` methods
-
-### Middleware & Utilities
-
-- [src/middleware/auth.ts](./src/middleware/auth.ts) — Bearer token validation against `LLMUX_API_KEY` or `LLMUX_API_KEYS` JSON map; anonymous mode when no keys configured
-- [src/utils/config.ts](./src/utils/config.ts) — YAML config loader: `loadConfig(path)` parses `config/config.yaml` into `Config` interface with defaults
-- [src/utils/logger.ts](./src/utils/logger.ts) — `pino` instance factory with pretty-printing in dev, structured JSON in production
-
-### Configuration Templates
-
-- [config/config.example.yaml](./config/config.example.yaml) — Example routing strategy, fallback chain, model aliases, provider API endpoints
+### Documentation
+- [README.md](./README.md) Usage guide, API endpoints (OpenAI/OpenResponses), config examples, deployment instructions
+- [LICENSE](./LICENSE) MIT License (c) 2025 Hemanth HM
 
 ## Subdirectories
 
-### src/
-
-Core Fastify-based proxy implementation. Request flow: `index.ts` (server) → `middleware/auth.ts` (auth) → `routes/*.ts` (handlers) → `router.ts` (provider selection) → `providers/` (API calls) → `adapters/` (response normalization) → `cache/` (storage).
-
-### workers/
-
-[workers/](./workers/) — Cloudflare Workers edge deployment variant. Hono framework, KV-backed caching, same provider routing logic. See [workers/AGENTS.md](./workers/AGENTS.md).
-
-### config/
-
-[config/](./config/) — Runtime configuration directory. Mount `config.yaml` here for Docker/compose deployments.
-
-### .vscode/
-
-[.vscode/](./.vscode/) — Editor settings. Contains `settings.json` with TypeScript preferences.
-
-## Architecture / Data Flow
-
-```
-Client Request
-    ↓
-Authorization: Bearer <key>  →  src/middleware/auth.ts  →  401 if invalid
-    ↓
-POST /v1/chat/completions    →  src/routes/chat.ts
-POST /v1/responses           →  src/routes/responses.ts
-    ↓
-src/router.ts selectProvider() →  Strategy: round-robin | random | first-available
-    ↓
-src/providers/index.ts       →  Concrete provider: GroqProvider, etc.
-    ↓
-undici fetch                 →  Provider API (Groq, Together, Cerebras, etc.)
-    ↓
-src/adapters/openai-adapter.ts →  Normalize response to OpenAI format
-    ↓
-src/cache/*.ts set()         →  Cache response (memory or Redis)
-    ↓
-Stream or JSON response      →  Client
-```
-
-**Fallback Chain:** On provider error (5xx, timeout, rate limit), `router.ts fallbackChain()` iterates through `routing.fallback_chain` array until success or exhaustion.
-
-## Configuration
-
-**File:** `config/config.yaml` (mount from `config/config.example.yaml`)
-
-```yaml
-routing:
-  default_strategy: round-robin # round-robin | random | first-available
-  fallback_chain: [groq, cerebras, together, sambanova, openrouter]
-  model_aliases:
-    fast: llama-3.1-8b-instant
-    strong: claude-3.5-sonnet
-
-cache:
-  backend: memory # memory | redis
-  ttl: 3600 # seconds
-
-providers:
-  groq:
-    base_url: https://api.groq.com/openai/v1
-    timeout: 30000
-```
-
-**Environment Variables:** `LLMUX_API_KEY` (proxy auth), `GROQ_API_KEY`, `TOGETHER_API_KEY`, `CEREBRAS_API_KEY`, `SAMBANOVA_API_KEY`, `OPENROUTER_API_KEY` (provider keys), `REDIS_URL` (Redis connection string), `NODE_ENV`, `PORT` (default 3000).
+- [config/](./config/) Configuration templates (config.example.yaml)
+- [src/](./src/) Core application - Fastify server, routing logic, providers, cache, middleware
+- [workers/](./workers/) Cloudflare Workers deployment variant with same routing logic
+- [scripts/](./scripts/) Build automation (build.ts)
+- [docs/](./docs/) Release notes and migration plans
+- [.github/workflows/](./.github/workflows/) CI/CD pipelines (release.yml)
+- [.remember/](./.remember/) Session persistence for AI development
 
 ## API Surface
 
-| Route                  | Method | Auth   | Handler                   |
-| ---------------------- | ------ | ------ | ------------------------- |
-| `/health`              | GET    | No     | `src/routes/health.ts`    |
-| `/health/providers`    | GET    | No     | `src/routes/health.ts`    |
-| `/v1/chat/completions` | POST   | Bearer | `src/routes/chat.ts`      |
-| `/v1/responses`        | POST   | Bearer | `src/routes/responses.ts` |
+**OpenAI-compatible**: `POST /v1/chat/completions`, `GET /v1/models`, `GET /health`, `GET /health/providers`
 
-**OpenResponses Format:** Supports `items` array with `message`, `function_call` types. Streaming events: `response.output_text.delta`. Continuation via `previous_response_id`.
+**OpenResponses**: `POST /v1/responses` with items format (message, function_call), semantic streaming (`response.output_text.delta`), `previous_response_id` continuation, `tool_choice`, `stream: true`
 
-## Deployment
+## Configuration
 
-### Docker (Multi-stage)
+**Environment**: LLMUX_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY, CEREBRAS_API_KEY, SAMBANOVA_API_KEY, OPENROUTER_API_KEY, REDIS_URL
 
-[Dockerfile](./Dockerfile) defines `builder` stage (TypeScript compilation) and `runner` stage (production deps only, non-root `llmux` user UID 1001, port 3000, health check).
+**Config file**: config/config.yaml defines routing.default_strategy (round-robin), routing.fallback_chain (provider order), routing.model_aliases, cache.backend (memory|redis)
 
-[docker-compose.yml](./docker-compose.yml) orchestrates `llmux` service (port 3000, config mount, env vars) with `redis` service (redis:7-alpine, `redis-data` volume).
+## Deployment Targets
 
-### Fly.io
+- **Docker**: `docker compose up` with Redis
+- **Fly.io**: `fly launch && fly secrets set GROQ_API_KEY=xxx && fly deploy`
+- **Cloudflare Workers**: `cd workers && bun run deploy`
 
-[fly.toml](./fly.toml) — `app = "llmux"`, `primary_region = "sjc"`, VM: 512mb memory, 1 shared CPU. HTTP service checks on `/health` every 30s.
+## Architecture
 
-### Cloudflare Workers
-
-[workers/](./workers/) subdirectory contains Hono-based edge variant. Deploy via `cd workers && npm run deploy`.
+Fastify server initializes ProviderRegistry → Router → CacheManager → ResponseStore. Auth middleware validates API keys. Router applies routing strategy (round-robin, random, first-available, latency) with automatic fallback. ResponseStore enables previous_response_id via LRU cache (max=1000, ttl=3600000ms). Streaming unsupported for provider fallback.
 
 ## Behavioral Contracts
 
-### Auth Header Parsing
+### Health Check
+HTTP endpoint /health responds with provider status
 
-```typescript
-// src/middleware/auth.ts
-const authHeader = request.headers.authorization;
-const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
-```
+### Cache Invalidation
+Redis cache invalidated via key prefix matching pattern
 
-### Cache Key Format (Workers variant)
-
-```javascript
-// workers/src/cache.ts
-`llmux:${Math.abs(hash).toString(16)}:${json.length}`;
-```
-
-Hash algorithm: djb2 (`hash = ((hash << 5) - hash) + char; hash = hash & hash`).
-
-### Response ID Generation
-
-```typescript
-// Pattern used across implementations
-`resp_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}``msg_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-```
-
-### Streaming SSE Sentinel
-
-Line `[DONE]` terminates SSE streams. Content extraction paths:
-
-- Chat completions: `json.choices?.[0]?.delta?.content`
-- Responses API: `json.type === 'response.output_text.delta' ? json.delta : null`
-
-### Health Check Endpoint
-
-Dockerfile health check: `wget --no-verbose --tries=1 --spider http://localhost:3000/health` — interval 30s, timeout 3s, start-period 5s, 3 retries.
-
-## File Relationships
-
-- `src/index.ts` imports `src/utils/config.ts` (config loading), `src/utils/logger.ts` (logging), `src/middleware/auth.ts` (auth hook), `src/routes/*.ts` (route handlers), `src/cache/index.ts` (cache initialization)
-- `src/router.ts` imports `src/providers/index.ts` (provider implementations), `src/types.ts` (interfaces)
-- `src/routes/chat.ts` and `src/routes/responses.ts` import `src/router.ts` (provider selection), `src/cache/index.ts` (response caching), `src/response-store.ts` (OpenResponses continuation)
-- `src/providers/*.ts` import `src/providers/base.ts` (base class), `src/types.ts` (interfaces)
-- `src/adapters/openai-adapter.ts` imported by route handlers for response normalization
+### Model Resolution
+Model aliases expanded via routing.model_aliases map before provider routing
