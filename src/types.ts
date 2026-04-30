@@ -153,4 +153,5 @@ export interface Cache {
   set(key: string, value: ChatCompletionResponse): Promise<void>;
   delete(key: string): Promise<void>;
   clear(): Promise<void>;
+  disconnect(): Promise<void>;
 }

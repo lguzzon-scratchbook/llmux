@@ -69,6 +69,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, "Shutting down...");
     await fastify.close();
     await cache.clear();
+    await cache.disconnect();
     process.exit(0);
   };
 

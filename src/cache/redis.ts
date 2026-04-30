@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import type { Cache, ChatCompletionResponse } from "../types.js";
 import { getLogger } from "../utils/logger.js";
+import { truncateKeyForLogging } from "../utils/cache-utils.js";
 
 export class RedisCache implements Cache {
   private client: Redis.default;
@@ -35,13 +36,22 @@ export class RedisCache implements Cache {
   async get(key: string): Promise<ChatCompletionResponse | null> {
     try {
       const value = await this.client.get(this.prefixedKey(key));
-      if (value) {
-        getLogger().debug({ key: key.slice(0, 32) + "..." }, "Redis cache hit");
-        const parsed = JSON.parse(value) as ChatCompletionResponse;
-        return { ...parsed, cached: true };
+      if (!value) {
+        getLogger().debug({ key: truncateKeyForLogging(key) }, "Redis cache miss");
+        return null;
       }
-      getLogger().debug({ key: key.slice(0, 32) + "..." }, "Redis cache miss");
-      return null;
+
+      try {
+        const parsed = JSON.parse(value) as ChatCompletionResponse;
+        getLogger().debug({ key: truncateKeyForLogging(key) }, "Redis cache hit");
+        return { ...parsed, cached: true };
+      } catch (parseError) {
+        getLogger().warn(
+          { key: truncateKeyForLogging(key), error: (parseError as Error).message },
+          "Failed to parse cached value",
+        );
+        return null;
+      }
     } catch (error) {
       getLogger().warn({ error: (error as Error).message }, "Redis get error");
       return null;
@@ -51,7 +61,7 @@ export class RedisCache implements Cache {
   async set(key: string, value: ChatCompletionResponse): Promise<void> {
     try {
       await this.client.setex(this.prefixedKey(key), this.ttl, JSON.stringify(value));
-      getLogger().debug({ key: key.slice(0, 32) + "..." }, "Redis cache set");
+      getLogger().debug({ key: truncateKeyForLogging(key) }, "Redis cache set");
     } catch (error) {
       getLogger().warn({ error: (error as Error).message }, "Redis set error");
     }
@@ -67,9 +77,21 @@ export class RedisCache implements Cache {
 
   async clear(): Promise<void> {
     try {
-      const keys = await this.client.keys(`${this.keyPrefix}*`);
-      if (keys.length > 0) {
-        await this.client.del(...keys);
+      const batchSize = 1000;
+      const batch: string[] = [];
+      const cursor = this.client.scanStream({
+        match: `${this.keyPrefix}*`,
+        count: 100,
+      });
+      for await (const key of cursor) {
+        batch.push(key);
+        if (batch.length >= batchSize) {
+          await this.client.del(...batch);
+          batch.length = 0;
+        }
+      }
+      if (batch.length > 0) {
+        await this.client.del(...batch);
       }
       getLogger().info("Redis cache cleared");
     } catch (error) {

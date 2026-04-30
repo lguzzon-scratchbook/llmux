@@ -1,6 +1,7 @@
 import { LRUCache } from "lru-cache";
 import type { Cache, ChatCompletionResponse } from "../types.js";
 import { getLogger } from "../utils/logger.js";
+import { truncateKeyForLogging } from "../utils/cache-utils.js";
 
 export class MemoryCache implements Cache {
   private cache: LRUCache<string, ChatCompletionResponse>;
@@ -17,16 +18,16 @@ export class MemoryCache implements Cache {
   async get(key: string): Promise<ChatCompletionResponse | null> {
     const value = this.cache.get(key);
     if (value) {
-      getLogger().debug({ key: key.slice(0, 32) + "..." }, "Cache hit");
+      getLogger().debug({ key: truncateKeyForLogging(key) }, "Cache hit");
       return { ...value, cached: true };
     }
-    getLogger().debug({ key: key.slice(0, 32) + "..." }, "Cache miss");
+    getLogger().debug({ key: truncateKeyForLogging(key) }, "Cache miss");
     return null;
   }
 
   async set(key: string, value: ChatCompletionResponse): Promise<void> {
     this.cache.set(key, value);
-    getLogger().debug({ key: key.slice(0, 32) + "..." }, "Cache set");
+    getLogger().debug({ key: truncateKeyForLogging(key) }, "Cache set");
   }
 
   async delete(key: string): Promise<void> {
@@ -36,6 +37,10 @@ export class MemoryCache implements Cache {
   async clear(): Promise<void> {
     this.cache.clear();
     getLogger().info("Memory cache cleared");
+  }
+
+  async disconnect(): Promise<void> {
+    // No-op for in-memory cache
   }
 
   getStats(): { size: number; maxSize: number } {

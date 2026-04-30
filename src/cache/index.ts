@@ -59,15 +59,13 @@ export function generateCacheKey(request: ChatCompletionRequest): string {
  */
 export class CacheManager {
   private cache: Cache | null;
-  private enabled: boolean;
 
   constructor(config: CacheConfig) {
-    this.enabled = config.enabled;
     this.cache = createCache(config);
   }
 
   isEnabled(): boolean {
-    return this.enabled && this.cache !== null;
+    return this.cache !== null;
   }
 
   /**
@@ -105,6 +103,15 @@ export class CacheManager {
   async clear(): Promise<void> {
     if (this.cache) {
       await this.cache.clear();
+    }
+  }
+
+  /**
+   * Disconnect from cache backend
+   */
+  async disconnect(): Promise<void> {
+    if (this.cache) {
+      await this.cache.disconnect();
     }
   }
 }
