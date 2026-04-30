@@ -8,7 +8,7 @@ LLM response caching layer with pluggable backends (memory LRU, Redis) and reque
 
 ### Core Exports
 
-- **[index.ts](./index.ts)** — exports `createCache()` factory, `generateCacheKey()` SHA256 hasher, and `CacheManager` orchestrator
+- **[index.ts](./index.ts)** — exports `createCache()` factory, `generateCacheKey()` xxHash64 hasher, and `CacheManager` orchestrator
 
 ### Backend Implementations
 
@@ -48,8 +48,8 @@ Per-request cache bypass via `request.cache === false` — checked in `CacheMana
 
 ### Cache Key Generation
 
-- Algorithm: `SHA256(JSON.stringify({model, messages, temperature, top_p, max_tokens, stop, presence_penalty, frequency_penalty}))`
-- Module: `node:crypto`, `createHash('sha256')`
+- Algorithm: `Bun.hash.xxHash64(JSON.stringify({model, messages, temperature, top_p, max_tokens, stop, presence_penalty, frequency_penalty})).toString(16)`
+- Module: `Bun.hash.xxHash64` (native, ~4x faster than SHA256)
 
 ### Key Truncation (Logging)
 

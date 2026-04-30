@@ -161,7 +161,7 @@ describe("generateCacheKey", () => {
     const key2 = generateCacheKey(request);
 
     expect(key1).toBe(key2);
-    expect(key1).toMatch(/^[a-f0-9]{64}$/); // SHA256 hex
+    expect(key1).toMatch(/^[a-f0-9]{15,16}$/); // xxHash64 hex
   });
 
   test("generates different keys for different requests", () => {

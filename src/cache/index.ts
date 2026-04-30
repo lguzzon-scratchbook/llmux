@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { MemoryCache } from "./memory.js";
 import { RedisCache } from "./redis.js";
 import type {
@@ -33,7 +32,7 @@ export function createCache(config: CacheConfig): Cache | null {
 
 /**
  * Generate a cache key from a chat completion request
- * Uses deterministic hashing of relevant request parameters
+ * Uses deterministic xxHash64 hashing of relevant request parameters
  */
 export function generateCacheKey(request: ChatCompletionRequest): string {
   // Include fields that affect the response
@@ -49,7 +48,7 @@ export function generateCacheKey(request: ChatCompletionRequest): string {
   };
 
   const json = JSON.stringify(keyData);
-  const hash = createHash("sha256").update(json).digest("hex");
+  const hash = Bun.hash.xxHash64(json).toString(16);
 
   return hash;
 }
