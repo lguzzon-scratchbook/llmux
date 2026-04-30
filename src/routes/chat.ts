@@ -103,12 +103,27 @@ async function handleStreamingRequest(
   });
 
   try {
+    let clientDisconnected = false;
     for await (const chunk of router.routeChatCompletionStream(body)) {
+      if (clientDisconnected) break;
+
       const data = JSON.stringify(chunk);
-      reply.raw.write(`data: ${data}\n\n`);
+      try {
+        reply.raw.write(`data: ${data}\n\n`);
+      } catch {
+        clientDisconnected = true;
+      }
     }
 
-    reply.raw.write("data: [DONE]\n\n");
+    if (clientDisconnected) {
+      logger.warn("Stream write failed, client disconnected");
+    }
+
+    try {
+      reply.raw.write("data: [DONE]\n\n");
+    } catch (writeError) {
+      logger.warn({ error: (writeError as Error).message }, "Failed to write done marker");
+    }
   } catch (error) {
     logger.error({ error: (error as Error).message }, "Streaming error");
 
@@ -120,8 +135,16 @@ async function handleStreamingRequest(
         code: "stream_error",
       },
     });
-    reply.raw.write(`data: ${errorData}\n\n`);
+    try {
+      reply.raw.write(`data: ${errorData}\n\n`);
+    } catch (writeError) {
+      logger.warn({ error: (writeError as Error).message }, "Failed to write error event");
+    }
   } finally {
-    reply.raw.end();
+    try {
+      reply.raw.end();
+    } catch (endError) {
+      logger.warn({ error: (endError as Error).message }, "Failed to close stream");
+    }
   }
 }

@@ -3,6 +3,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ResponseRequest, Response, InputItem, StreamEvent } from "../open-responses-types.js";
+import "../middleware/auth.js";
 import { generateId, normalizeInput } from "../open-responses-types.js";
 import {
   toOpenAIChatRequest,
@@ -54,7 +55,7 @@ export async function responsesRoutes(
         });
       }
 
-      const client = (request as any).clientLabel || "anonymous";
+      const client = request.clientLabel || "anonymous";
 
       try {
         // Normalize and expand input
@@ -180,7 +181,10 @@ async function handleStreamingRequest(
     // Transform to OpenResponses events
     let finalResponse: Response | null = null;
 
+    let clientDisconnected = false;
     for await (const event of streamToEvents(chunks, body.model)) {
+      if (clientDisconnected) break;
+
       // Track final response for storage
       if (event.type === "response.completed") {
         finalResponse = event.response;
@@ -188,7 +192,15 @@ async function handleStreamingRequest(
 
       // Send event in SSE format
       const data = JSON.stringify(event);
-      reply.raw.write(`event: ${event.type}\ndata: ${data}\n\n`);
+      try {
+        reply.raw.write(`event: ${event.type}\ndata: ${data}\n\n`);
+      } catch {
+        clientDisconnected = true;
+      }
+    }
+
+    if (clientDisconnected) {
+      logger.warn("Stream write failed, client disconnected");
     }
 
     // Store final response
@@ -197,7 +209,11 @@ async function handleStreamingRequest(
     }
 
     // Send done marker
-    reply.raw.write("data: [DONE]\n\n");
+    try {
+      reply.raw.write("data: [DONE]\n\n");
+    } catch (writeError) {
+      logger.warn({ error: (writeError as Error).message }, "Failed to write done marker");
+    }
   } catch (error) {
     logger.error({ error: (error as Error).message }, "OpenResponses streaming error");
 
@@ -219,8 +235,16 @@ async function handleStreamingRequest(
       },
     };
 
-    reply.raw.write(`event: response.failed\ndata: ${JSON.stringify(errorEvent)}\n\n`);
+    try {
+      reply.raw.write(`event: response.failed\ndata: ${JSON.stringify(errorEvent)}\n\n`);
+    } catch (writeError) {
+      logger.warn({ error: (writeError as Error).message }, "Failed to write error event");
+    }
   } finally {
-    reply.raw.end();
+    try {
+      reply.raw.end();
+    } catch (endError) {
+      logger.warn({ error: (endError as Error).message }, "Failed to close stream");
+    }
   }
 }
