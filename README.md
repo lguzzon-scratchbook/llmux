@@ -7,11 +7,11 @@
 ## Setup
 
 ```bash
-npm install
+bun install
 cp config/config.example.yaml config/config.yaml
 cp .env.example .env
 # Add your provider API keys to .env
-npm run dev
+bun run dev
 ```
 
 ## Usage
@@ -88,7 +88,7 @@ docker compose up
 fly launch && fly secrets set GROQ_API_KEY=xxx && fly deploy
 
 # Cloudflare Workers (see workers/)
-cd workers && npm run deploy
+cd workers && bun run deploy
 ```
 
 ## License
