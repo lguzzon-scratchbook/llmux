@@ -12,24 +12,25 @@
 
 ## File Structure
 
-| File | Responsibility | Change Type |
-|------|----------------|-------------|
-| `package.json` | Root package manifest | Modify - update engines, scripts, dependencies |
-| `workers/package.json` | Workers package manifest | Modify - update engines, scripts |
-| `Dockerfile` | Container build instructions | Modify - switch to oven/bun base |
-| `docker-compose.yml` | Local orchestration | No change - uses container, runtime-agnostic |
-| `README.md` | Setup documentation | Modify - update install instructions |
-| `workers/README.md` | Workers setup docs | Modify - update install instructions |
-| `bun.lock` | Bun lockfile | Create - replaces package-lock.json |
-| `workers/bun.lock` | Workers lockfile | Create - replaces package-lock.json |
-| `package-lock.json` | npm lockfile | Delete |
-| `workers/package-lock.json` | npm lockfile | Delete |
+| File                        | Responsibility               | Change Type                                    |
+| --------------------------- | ---------------------------- | ---------------------------------------------- |
+| `package.json`              | Root package manifest        | Modify - update engines, scripts, dependencies |
+| `workers/package.json`      | Workers package manifest     | Modify - update engines, scripts               |
+| `Dockerfile`                | Container build instructions | Modify - switch to oven/bun base               |
+| `docker-compose.yml`        | Local orchestration          | No change - uses container, runtime-agnostic   |
+| `README.md`                 | Setup documentation          | Modify - update install instructions           |
+| `workers/README.md`         | Workers setup docs           | Modify - update install instructions           |
+| `bun.lock`                  | Bun lockfile                 | Create - replaces package-lock.json            |
+| `workers/bun.lock`          | Workers lockfile             | Create - replaces package-lock.json            |
+| `package-lock.json`         | npm lockfile                 | Delete                                         |
+| `workers/package-lock.json` | npm lockfile                 | Delete                                         |
 
 ---
 
 ## Task 1: Root Package - Update package.json
 
 **Files:**
+
 - Modify: `package.json:19-47`
 
 - [ ] **Step 1: Update engines and packageManager field**
@@ -76,6 +77,7 @@ git commit -m "chore: update root package.json for Bun migration"
 ## Task 2: Workers Package - Update workers/package.json
 
 **Files:**
+
 - Modify: `workers/package.json:7-25`
 
 - [ ] **Step 1: Update engines and packageManager field**
@@ -117,6 +119,7 @@ git commit -m "chore: update workers package.json for Bun migration"
 ## Task 3: Docker - Update Dockerfile for Bun
 
 **Files:**
+
 - Modify: `Dockerfile:1-52`
 
 - [ ] **Step 1: Replace full Dockerfile with Bun-based build**
@@ -187,13 +190,14 @@ git commit -m "chore: update Dockerfile to use Bun runtime"
 ## Task 4: Documentation - Update README.md
 
 **Files:**
+
 - Modify: `README.md:9-15`
 
 - [ ] **Step 1: Replace Setup section in README.md**
 
 Find the Setup section (lines 7-15) and replace with:
 
-```markdown
+````markdown
 ## Setup
 
 ```bash
@@ -203,7 +207,9 @@ cp .env.example .env
 # Add your provider API keys to .env
 bun run dev
 ```
-```
+````
+
+````
 
 - [ ] **Step 2: Replace Deploy section Cloudflare Workers command**
 
@@ -212,7 +218,7 @@ Find line 91 and change:
 ```markdown
 # Cloudflare Workers (see workers/)
 cd workers && bun run deploy
-```
+````
 
 - [ ] **Step 3: Commit**
 
@@ -226,20 +232,23 @@ git commit -m "docs: update README for Bun migration"
 ## Task 5: Documentation - Update workers/README.md
 
 **Files:**
+
 - Modify: `workers/README.md:9-53`
 
 - [ ] **Step 1: Replace Install dependencies section**
 
 Find lines 9-12 and replace with:
 
-```markdown
+````markdown
 ### 1. Install dependencies
 
 ```bash
 cd workers
 bun install
 ```
-```
+````
+
+````
 
 - [ ] **Step 2: Replace Deploy section npm commands**
 
@@ -254,21 +263,23 @@ bun run dev
 
 # Production
 bun run deploy
-```
-```
+````
+
+````
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add workers/README.md
 git commit -m "docs: update workers README for Bun migration"
-```
+````
 
 ---
 
 ## Task 6: Lockfiles - Migrate from npm to Bun
 
 **Files:**
+
 - Delete: `package-lock.json`
 - Delete: `workers/package-lock.json`
 - Create: `bun.lock`
@@ -290,6 +301,7 @@ bun install
 ```
 
 Expected output:
+
 ```
 bun install v1.2.x
   [8.12ms] done
@@ -314,6 +326,7 @@ git commit -m "chore: add Bun lockfiles"
 ## Task 7: Verification - Test Full Migration
 
 **Files:**
+
 - Test: Root package commands
 - Test: Workers package commands
 - Test: Docker build
@@ -347,6 +360,7 @@ If any fixes required, commit them. Otherwise this task requires no commit.
 ## Self-Review Checklist
 
 **1. Spec coverage:**
+
 - ✅ Update package.json (both root and workers) - Task 1, 2
 - ✅ Update Dockerfile - Task 3
 - ✅ Update documentation (README files) - Task 4, 5
@@ -354,17 +368,20 @@ If any fixes required, commit them. Otherwise this task requires no commit.
 - ✅ Verification - Task 7
 
 **2. Placeholder scan:**
+
 - ✅ No "TBD", "TODO", "implement later"
 - ✅ No vague "add error handling" without specifics
 - ✅ No "similar to Task N" references
 - ✅ All code blocks show exact content
 
 **3. Type consistency:**
+
 - ✅ Bun version 1.2+ throughout
 - ✅ Script commands consistent (`bun run`, `bun install`)
 - ✅ Lockfile names consistent (`bun.lock`)
 
 **4. Dependencies verified:**
+
 - `tsx` removed (Bun native TS support)
 - `fastify` - Bun compatible
 - `ioredis` - Bun compatible
@@ -376,12 +393,14 @@ If any fixes required, commit them. Otherwise this task requires no commit.
 ## Post-Migration Notes
 
 **What changes:**
+
 - Install: `npm install` → `bun install`
 - Run: `npm run dev` → `bun run dev` (or `bun dev` shorthand)
 - Runtime: Node.js → Bun
 - Lockfile: `package-lock.json` → `bun.lock`
 
 **What stays the same:**
+
 - All source code (TypeScript unchanged)
 - Config files (YAML, TOML unchanged)
 - API surface (no behavior changes)
@@ -389,6 +408,7 @@ If any fixes required, commit them. Otherwise this task requires no commit.
 - Docker compose (runtime-agnostic)
 
 **Performance improvements:**
+
 - 10x faster package installs
 - ~30% faster cold starts in Docker
 - Native TypeScript (no tsx overhead)
