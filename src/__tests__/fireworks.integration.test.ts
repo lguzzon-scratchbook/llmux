@@ -64,18 +64,14 @@ logging:
     // Start server as separate process
     baseUrl = `http://127.0.0.1:${port}`;
 
-    server = spawn(
-      "bun",
-      ["run", "src/index.ts"],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          LLMUX_CONFIG_PATH: configPath,
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      }
-    );
+    server = spawn("bun", ["run", "src/index.ts"], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        LLMUX_CONFIG_PATH: configPath,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     // Wait for server to be ready
     await new Promise<void>((resolve, reject) => {
@@ -86,7 +82,7 @@ logging:
       const checkReady = async () => {
         try {
           const res = await fetch(`${baseUrl}/health`, {
-            headers: { "Authorization": `Bearer ${apiKey}` },
+            headers: { Authorization: `Bearer ${apiKey}` },
           });
           if (res.status === 200) {
             clearTimeout(timeout);
@@ -118,13 +114,11 @@ logging:
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "claude-sonnet",
-        messages: [
-          { role: "user", content: "Say to me 'yEs'" },
-        ],
+        messages: [{ role: "user", content: "Say to me 'yEs'" }],
         max_tokens: 50,
         temperature: 0.1,
       }),
@@ -133,7 +127,7 @@ logging:
     // Validate HTTP 200
     expect(response.status).toBe(200);
 
-    const data = await response.json() as ChatCompletionResponse;
+    const data = (await response.json()) as ChatCompletionResponse;
 
     // Validate response structure
     expect(data).toHaveProperty("id");

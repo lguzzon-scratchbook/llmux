@@ -14,9 +14,5 @@
     "tabWidth": 2,
     "useTabs": false
   },
-  "ignorePatterns": [
-    "dist/**/*",
-    "node_modules/**/*",
-    "**/*.min.*"
-  ]
+  "ignorePatterns": ["dist/**/*", "node_modules/**/*", "**/*.min.*"]
 }
