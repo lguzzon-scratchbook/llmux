@@ -10,12 +10,9 @@ coverage/
 # agents-reverse-engineer
 *.sum
 .npm-cache
-.agents-reverse-engineer/config.yaml
-.agents-reverse-engineer/GENERATION-PLAN.md
-.agents-reverse-engineer/logs/run-generate-claude-sonnet-2026-04-30T07-49-35-185Z.json
-.agents-reverse-engineer/logs/run-generate-claude-sonnet-2026-04-30T07-54-38-857Z.json
-.agents-reverse-engineer/logs/run-generate-claude-sonnet-2026-04-30T07-55-51-512Z.json
-.vscode/settings.json
+.agents-reverse-engineer/
 
 # AgentOps session artifacts
 .agents/
+.env
+.vscode/

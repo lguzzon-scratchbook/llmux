@@ -35,6 +35,36 @@ class OpenRouterProvider extends BaseProvider {
   }
 }
 
+class FireworksProvider extends BaseProvider {
+  constructor(config: Config["providers"]["fireworks"]) {
+    super("fireworks", config);
+  }
+}
+
+class ByteplusProvider extends BaseProvider {
+  constructor(config: Config["providers"]["byteplus"]) {
+    super("byteplus", config);
+  }
+}
+
+class AlibabaProvider extends BaseProvider {
+  constructor(config: Config["providers"]["alibaba"]) {
+    super("alibaba", config);
+  }
+}
+
+class KilocodeProvider extends BaseProvider {
+  constructor(config: Config["providers"]["kilocode"]) {
+    super("kilocode", config);
+  }
+}
+
+class ChutesProvider extends BaseProvider {
+  constructor(config: Config["providers"]["chutes"]) {
+    super("chutes", config);
+  }
+}
+
 // Generic provider for any OpenAI-compatible API
 class GenericProvider extends BaseProvider {}
 
@@ -44,6 +74,11 @@ const PROVIDER_CLASSES: Record<string, new (config: Config["providers"][string])
   cerebras: CerebrasProvider,
   sambanova: SambanovaProvider,
   openrouter: OpenRouterProvider,
+  fireworks: FireworksProvider,
+  byteplus: ByteplusProvider,
+  alibaba: AlibabaProvider,
+  kilocode: KilocodeProvider,
+  chutes: ChutesProvider,
 };
 
 export class ProviderRegistry {

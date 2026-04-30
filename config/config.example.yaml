@@ -79,6 +79,57 @@ providers:
       HTTP-Referer: ${APP_URL:-http://localhost:3000}
       X-Title: llmux
 
+  fireworks:
+    enabled: true
+    api_key: ${FIREWORKS_API_KEY}
+    base_url: https://api.fireworks.ai/inference/v1
+    models:
+      - accounts/fireworks/routers/kimi-k2p5-turbo
+    timeout: 30000
+    max_retries: 2
+
+  byteplus:
+    enabled: true
+    api_key: ${BYTEPLUS_API_KEY}
+    base_url: https://ark.ap-southeast.bytepluses.com/api/coding/v3
+    models:
+      - dola-seed-2.0-code
+      - glm-5.1
+      - kimi-k2.5
+    timeout: 30000
+    max_retries: 2
+
+  alibaba:
+    enabled: true
+    api_key: ${ALIBABA_API_KEY}
+    base_url: https://coding-intl.dashscope.aliyuncs.com/v1
+    models:
+      - qwen3.5-plus
+      - qwen3-max-2026-01-23
+      - kimi-k2.5
+      - glm-5
+    timeout: 30000
+    max_retries: 2
+
+  kilocode:
+    enabled: true
+    api_key: ${KILOCODE_API_KEY}
+    base_url: https://api.kilo.ai/api/gateway
+    models:
+      - kilo-default
+    timeout: 30000
+    max_retries: 2
+
+  chutes:
+    enabled: true
+    api_key: ${CHUTES_API_KEY}
+    base_url: https://llm.chutes.ai/v1
+    models:
+      - zai-org/GLM-4.7-Flash
+      - MiniMaxAI/MiniMax-M2.5-TEE
+    timeout: 30000
+    max_retries: 2
+
 # Routing configuration
 routing:
   # Default strategy: round-robin, random, first-available, latency
@@ -91,6 +142,11 @@ routing:
     - together
     - sambanova
     - openrouter
+    - fireworks
+    - byteplus
+    - alibaba
+    - kilocode
+    - chutes
 
   # Model aliases - map friendly names to provider-specific models
   model_aliases:
