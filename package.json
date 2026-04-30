@@ -39,6 +39,8 @@
   "devDependencies": {
     "@types/node": "^22.10.1",
     "oxc-transform": "^0.41.0",
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0",
     "typescript": "^5.7.2"
   },
   "engines": {
