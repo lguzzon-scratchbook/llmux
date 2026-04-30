@@ -69,20 +69,10 @@ jobs:
         run: |
           bun run scripts/build.ts --target ${{ matrix.target }} --verbose
 
-      - name: Rename binary (Windows)
-        if: startsWith(matrix.os, 'windows')
-        shell: pwsh
+      - name: Verify binary exists
+        shell: bash
         run: |
-          $version = "${{ steps.get_version.outputs.version }}"
-          $suffix = "${{ matrix.platform_suffix }}"
-          Rename-Item -Path "dist/llmux-v$version-$suffix.exe" -NewName "llmux-v$version-$suffix.exe"
-
-      - name: Rename binary (Unix)
-        if: '!startsWith(matrix.os, ''windows'')'
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          SUFFIX="${{ matrix.platform_suffix }}"
-          mv "dist/llmux-v${VERSION}-${SUFFIX}" "dist/llmux-v${VERSION}-${SUFFIX}"
+          ls -la dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
