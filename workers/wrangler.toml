@@ -25,7 +25,7 @@ name = "llmux-dev"
 
 [[env.dev.kv_namespaces]]
 binding = "CACHE"
-id = "YOUR_DEV_KV_NAMESPACE_ID"  # Replace after running: wrangler kv:namespace create CACHE --preview
+id = "YOUR_DEV_KV_NAMESPACE_ID" # Replace after running: wrangler kv:namespace create CACHE --preview
 
 # Production settings
 [env.production]

@@ -1,8 +1,12 @@
 node_modules/
 dist/
-.env
+.env.*
 config/config.yaml
 *.log
 .DS_Store
 coverage/
 .nyc_output/
+
+# agents-reverse-engineer
+*.sum
+.npm-cache

@@ -70,24 +70,24 @@ curl https://llmux.<your-subdomain>.workers.dev/v1/chat/completions \
 
 Configuration is done via `wrangler.toml` and secrets:
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `CACHE_TTL` | var | Cache TTL in seconds (default: 3600) |
-| `DEFAULT_STRATEGY` | var | Routing strategy: round-robin, random, first-available |
-| `FALLBACK_CHAIN` | var | Comma-separated provider order |
-| `LLMUX_API_KEY` | secret | Proxy authentication key |
-| `GROQ_API_KEY` | secret | Groq API key |
-| `TOGETHER_API_KEY` | secret | Together API key |
-| `CEREBRAS_API_KEY` | secret | Cerebras API key |
-| `SAMBANOVA_API_KEY` | secret | SambaNova API key |
-| `OPENROUTER_API_KEY` | secret | OpenRouter API key |
+| Variable             | Type   | Description                                            |
+| -------------------- | ------ | ------------------------------------------------------ |
+| `CACHE_TTL`          | var    | Cache TTL in seconds (default: 3600)                   |
+| `DEFAULT_STRATEGY`   | var    | Routing strategy: round-robin, random, first-available |
+| `FALLBACK_CHAIN`     | var    | Comma-separated provider order                         |
+| `LLMUX_API_KEY`      | secret | Proxy authentication key                               |
+| `GROQ_API_KEY`       | secret | Groq API key                                           |
+| `TOGETHER_API_KEY`   | secret | Together API key                                       |
+| `CEREBRAS_API_KEY`   | secret | Cerebras API key                                       |
+| `SAMBANOVA_API_KEY`  | secret | SambaNova API key                                      |
+| `OPENROUTER_API_KEY` | secret | OpenRouter API key                                     |
 
 ## Differences from Node.js Version
 
-| Feature | Node.js | Workers |
-|---------|---------|---------|
-| Config format | YAML file | wrangler.toml + secrets |
-| Caching | LRU memory / Redis | Cloudflare KV |
-| Runtime | Node.js 20+ | V8 isolates |
-| Cold start | ~200ms | ~0ms |
-| Region | Single | Global edge |
+| Feature       | Node.js            | Workers                 |
+| ------------- | ------------------ | ----------------------- |
+| Config format | YAML file          | wrangler.toml + secrets |
+| Caching       | LRU memory / Redis | Cloudflare KV           |
+| Runtime       | Node.js 20+        | V8 isolates             |
+| Cold start    | ~200ms             | ~0ms                    |
+| Region        | Single             | Global edge             |

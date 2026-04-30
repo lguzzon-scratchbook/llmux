@@ -1,4 +1,5 @@
 # llmux
+
 > LLM proxy that routes requests across Groq, Together, Cerebras, SambaNova, OpenRouter with automatic fallbacks.
 
 <img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/2fb095d9-f37b-4512-a928-7ad2a348b3b7" />
@@ -47,6 +48,7 @@ curl http://localhost:3000/v1/responses \
 ```
 
 **Features:**
+
 - Items-based request/response format (`message`, `function_call`)
 - Semantic streaming events (`response.output_text.delta`, etc.)
 - Conversation continuation with `previous_response_id`
@@ -73,7 +75,7 @@ routing:
       together: meta-llama/Llama-3.1-70B-Instruct-Turbo
 
 cache:
-  backend: memory  # or redis
+  backend: memory # or redis
 ```
 
 ## Deploy

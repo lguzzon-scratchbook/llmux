@@ -117,7 +117,7 @@ cache:
   # Memory cache settings
   memory:
     max_items: 1000
-    ttl: 3600  # seconds
+    ttl: 3600 # seconds
 
   # Redis settings (used when backend: redis)
   redis:
@@ -127,5 +127,5 @@ cache:
 
 # Logging
 logging:
-  level: info  # debug, info, warn, error
-  pretty: true  # pretty print in development
+  level: info # debug, info, warn, error
+  pretty: true # pretty print in development
