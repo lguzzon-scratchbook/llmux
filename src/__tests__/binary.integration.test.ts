@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, existsSync, statSync, readdirSync } from "node:fs";
 import { tmpdir, platform, arch } from "node:os";
 import { join } from "node:path";
 
@@ -35,6 +35,33 @@ async function getBinaryPath(): Promise<string> {
   return `dist/llmux-v${version}-${mappedPlatform}-${mappedArch}${extension}`;
 }
 
+// Check if binary exists and is newer than all source files
+function isBinaryUpToDate(binaryPath: string): boolean {
+  if (!existsSync(binaryPath)) {
+    return false;
+  }
+
+  const binaryMtime = statSync(binaryPath).mtimeMs;
+
+  // Check if any source file is newer than binary
+  function checkDir(dir: string): boolean {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!checkDir(fullPath)) return false;
+      } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+        if (statSync(fullPath).mtimeMs > binaryMtime) {
+          return false; // Source file is newer
+        }
+      }
+    }
+    return true;
+  }
+
+  return checkDir("src");
+}
+
 describe("Binary Build Integration", () => {
   let tempDir: string;
   let configPath: string;
@@ -44,16 +71,30 @@ describe("Binary Build Integration", () => {
   const apiKey = "test-binary-key";
   const port = 19002; // Use non-standard port to avoid conflicts
 
+  let buildTime: number;
+  let startupTime: number;
+
   beforeAll(async () => {
-    // Build binary for current platform
-    console.log("Building binary...");
-    const buildResult = await Bun.$`bun run build:binary`.quiet();
-    if (buildResult.exitCode !== 0) {
-      throw new Error(`Binary build failed with exit code ${buildResult.exitCode}`);
+    const totalStart = performance.now();
+
+    // Get binary path first to check if caching is possible
+    binaryPath = await getBinaryPath();
+
+    // Build binary for current platform (with caching)
+    if (isBinaryUpToDate(binaryPath)) {
+      console.log(`Using cached binary: ${binaryPath}`);
+      buildTime = 0;
+    } else {
+      console.log("Building binary...");
+      const buildStart = performance.now();
+      const buildResult = await Bun.$`bun run build:binary`.quiet();
+      if (buildResult.exitCode !== 0) {
+        throw new Error(`Binary build failed with exit code ${buildResult.exitCode}`);
+      }
+      buildTime = performance.now() - buildStart;
+      console.log(`Binary built in ${buildTime.toFixed(0)}ms`);
     }
 
-    // Get binary path
-    binaryPath = await getBinaryPath();
     console.log(`Binary path: ${binaryPath}`);
 
     // Verify binary exists
@@ -117,6 +158,7 @@ logging:
     });
 
     // Wait for server to be ready
+    const startupStart = performance.now();
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Server failed to start within 30s"));
@@ -141,6 +183,12 @@ logging:
       // Start checking after short delay for process startup
       setTimeout(checkReady, 500);
     });
+    startupTime = performance.now() - startupStart;
+
+    const totalTime = performance.now() - totalStart;
+    console.log(
+      `Setup complete: build=${buildTime.toFixed(0)}ms, startup=${startupTime.toFixed(0)}ms, total=${totalTime.toFixed(0)}ms`,
+    );
   }, 60000); // 60s timeout for build + startup
 
   afterAll(() => {
