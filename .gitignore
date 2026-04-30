@@ -16,3 +16,6 @@ coverage/
 .agents-reverse-engineer/logs/run-generate-claude-sonnet-2026-04-30T07-54-38-857Z.json
 .agents-reverse-engineer/logs/run-generate-claude-sonnet-2026-04-30T07-55-51-512Z.json
 .vscode/settings.json
+
+# AgentOps session artifacts
+.agents/
