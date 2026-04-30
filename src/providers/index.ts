@@ -36,11 +36,7 @@ class OpenRouterProvider extends BaseProvider {
 }
 
 // Generic provider for any OpenAI-compatible API
-class GenericProvider extends BaseProvider {
-  constructor(name: string, config: Config["providers"][string]) {
-    super(name, config);
-  }
-}
+class GenericProvider extends BaseProvider {}
 
 const PROVIDER_CLASSES: Record<string, new (config: Config["providers"][string]) => Provider> = {
   groq: GroqProvider,

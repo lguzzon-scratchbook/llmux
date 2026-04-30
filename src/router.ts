@@ -114,6 +114,7 @@ export class Router {
           "Routing request to provider",
         );
 
+        // eslint-disable-next-line no-await-in-loop -- fallback chain requires sequential execution
         const response = await provider.chatCompletion({
           ...request,
           model: resolvedModel,
@@ -169,6 +170,7 @@ export class Router {
         );
 
         // Once streaming starts, we commit to this provider
+        // eslint-disable-next-line no-await-in-loop -- async generator iteration requires for await
         for await (const chunk of provider.chatCompletionStream({
           ...request,
           model: resolvedModel,

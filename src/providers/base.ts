@@ -1,5 +1,6 @@
 import { request } from "undici";
 import { getLogger } from "../utils/logger.js";
+import { sanitizeProviderRequest, SSE_DONE_SENTINEL } from "../utils/cache-utils.js";
 import type {
   Provider,
   ProviderConfig,
@@ -55,7 +56,7 @@ export class BaseProvider implements Provider {
     const url = `${this.config.base_url}/chat/completions`;
 
     // Remove llmux-specific fields before sending to provider
-    const { provider: _, cache: __, ...providerRequest } = req;
+    const providerRequest = sanitizeProviderRequest(req);
 
     logger.debug({ provider: this.name, model: req.model }, "Sending chat completion request");
 
@@ -90,7 +91,7 @@ export class BaseProvider implements Provider {
     const url = `${this.config.base_url}/chat/completions`;
 
     // Remove llmux-specific fields before sending to provider
-    const { provider: _, cache: __, ...providerRequest } = req;
+    const providerRequest = sanitizeProviderRequest(req);
 
     logger.debug(
       { provider: this.name, model: req.model },
@@ -131,7 +132,7 @@ export class BaseProvider implements Provider {
           continue;
         }
 
-        if (trimmed === "data: [DONE]") {
+        if (trimmed === SSE_DONE_SENTINEL) {
           return;
         }
 
@@ -140,7 +141,7 @@ export class BaseProvider implements Provider {
           try {
             const parsed = JSON.parse(jsonStr) as ChatCompletionChunk;
             yield parsed;
-          } catch (e) {
+          } catch {
             logger.warn({ line: trimmed }, "Failed to parse SSE chunk");
           }
         }
